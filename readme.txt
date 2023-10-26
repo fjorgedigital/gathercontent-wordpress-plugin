@@ -428,3 +428,6 @@ if ( class_exists( 'GatherContent\\Importer\\General' ) ) {
 
 = 3.0.0.6 =
 * Fix conflicts/errors which occur on installations using PHP 5.3.
+
+
+Remove this line 
