@@ -16,7 +16,7 @@
 	<br/>
 	<form action="<?php echo esc_url( admin_url( 'admin.php?page=gathercontent-import-support' ) ); ?>" method="post" dir="ltr">
 		<textarea readonly="readonly" onclick="this.focus();this.select()" id="system-info-textarea" name="gc-sysinfo" title="<?php _e( 'To copy the system info, click below then press Ctrl + C (PC) or Cmd + C (Mac).', 'gathercontent-import' ); ?>">
-### Begin System Info [Dev Check 1]###
+### Begin System Info ###
 
 ## Please include this information when getting in touch with the GatherContent support team ##
 <?php do_action( 'gc_system_info_before' ); ?>
