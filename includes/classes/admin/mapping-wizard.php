@@ -528,7 +528,7 @@ class Mapping_Wizard extends Base {
 					foreach ($group->fields as $field) {
 						if (isset($field->metadata->repeatable) && $field->metadata->repeatable->isRepeatable) {
 							$template_has_repeatable_fields = true;
-							break 2; // Break both loops once a repeatable field is found
+							break 2;
 						}
 					}
 				}
@@ -538,9 +538,18 @@ class Mapping_Wizard extends Base {
 		if ($template_has_repeatable_fields && !$is_acf_pro_installed ){
 			$notes .= $this->view(
 				'graceful-degradation',
-				array(),
+				array('additionalClass' => 'gc-component-disabled'),
 				false
 			);
+
+			?>
+				<style>
+					.gc-component-disabled {
+						pointer-events: none;
+						opacity: 0.5;
+					}
+				</style>
+			<?php
 		}
 
 		if ( ! $sync_items && $mapping_id ) {
