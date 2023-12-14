@@ -1,5 +1,5 @@
 
-<td>
+<td <# if (data.typeName === 'component') { #> class="gc-component-disabled"<# } #>>
 	<# if ( ( data.limit && data.limit_type ) || data.instructions || data.typeName ) { #>
 	<# if ( ( data.is_repeatable ) ) { #>
 		<span class="dashicons dashicons-controls-repeat" title="Repeatable Field"></span>
@@ -55,7 +55,7 @@
 	<strong>{{ data.label }}</strong>
 	<# } #>
 </td>
-<td>
+<td <# if (data.typeName === 'component') { #> class="gc-component-disabled"<# } #>>
     <# if ( data.component ) { #>
         <select class="wp-type-select" name="<?php $this->output( 'option_base' ); ?>[mapping][{{ data.name }}][type]">
 			<option <# if ( '' === data.field_type ) { #>selected="selected"<# } #> value=""><?php _e( 'Unused', 'gathercontent-import' ); ?></option>
