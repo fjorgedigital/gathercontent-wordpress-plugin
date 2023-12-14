@@ -48,7 +48,6 @@ class Template_Mapper extends Base {
 	 * @return void
 	 */
 	public function ui_page() {
-		// var_dump($this->template->related->structure->groups[0]-> fields[4]);
 		// Output the markup for the JS to build on.
 		echo '<div id="mapping-tabs"><span class="gc-loader spinner is-active"></span></div>';
 
@@ -238,7 +237,13 @@ class Template_Mapper extends Base {
 			new Field_Types\Taxonomy( $this->post_types() ),
 			new Field_Types\Meta(),
 			new Field_Types\Media(),
+			// new Field_Types\ACF(),
 		);
+
+		$is_acf_installed = class_exists('acf_pro');
+		if ($is_acf_installed) {
+			$core_field_types[] = new Field_Types\ACF();
+		}
 
 		if ( defined( 'WPSEO_VERSION' ) ) {
 			$core_field_types[] = new Field_Types\WPSEO( $this->post_types() );

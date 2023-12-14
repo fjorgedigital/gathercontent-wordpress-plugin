@@ -1,3 +1,4 @@
+
 <td>
 	<# if ( ( data.limit && data.limit_type ) || data.instructions || data.typeName ) { #>
 	<# if ( ( data.is_repeatable ) ) { #>
@@ -20,6 +21,8 @@
 		<# if ( data.component ) { #>
 			<table>
 				<# _.each(data.component.fields, function(field) { #>
+					<!-- <pre>{{ JSON.stringify(field, null, 2) }}</pre> -->
+
 					<tr>
 						<td>
 							<# if ( field.metadata && field.metadata.repeatable && field.metadata.repeatable.isRepeatable ) { #>
@@ -55,7 +58,7 @@
 <td>
     <# if ( data.component ) { #>
         <select class="wp-type-select" name="<?php $this->output( 'option_base' ); ?>[mapping][{{ data.name }}][type]">
-			<option <# if ( '' === data.field_type ) { #>selected="selected"<# } #> value=""><?php _e( 'ACF Repeaters', 'gathercontent-import' ); ?></option>
+			<option <# if ( '' === data.field_type ) { #>selected="selected"<# } #> value=""><?php _e( 'Unused', 'gathercontent-import' ); ?></option>
 			<?php do_action( 'gathercontent_field_type_option_underscore_template', $this ); ?>
         </select>
 		<?php do_action( 'gathercontent_field_type_underscore_template', $this ); ?>
