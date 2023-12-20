@@ -321,30 +321,61 @@ class Template_Mapper extends Base {
 	 *
 	 * @return array  Array of tabs.
 	 */
+	
+	 /**
+	 * Retrieves and structures tabs with associated fields or components.
+	 * Handles tab groups, checks for ACF Pro presence, and constructs tab arrays.
+	 * Utilizes switch cases based on ACF Pro installation status.
+	 *
+	 * @return array Tabs with structured fields or components for display.
+	 */
+
 	protected function get_tabs() {
 		$tabs = [];
 		$post_type = $this->get_value('post_type', 'esc_attr');
 		$tab_groups = $this->template->related->structure->groups ?? [];
-
+		$is_acf_pro_installed = class_exists('acf_pro');
+	
 		foreach ($tab_groups as $tab) {
 			$rows = [];
 			$fields = $tab->fields ?? [];
-
+	
 			foreach ($fields as $field) {
 				$metadata = $field->metadata;
 				$is_repeatable = (is_object($metadata) && isset($metadata->repeatable)) ? $metadata->repeatable->isRepeatable : false;
-
-				if (self::COMPONENT_FIELD !== $field->field_type) {
-					$this->formatAndAddField($field, $post_type, '', $is_repeatable, $rows);
-				}
-
-				if (self::COMPONENT_FIELD === $field->field_type) {
-					$component_id = $field->uuid;
-					$component_name = $field->label;
-					$this->formatAndAddField($field, $post_type, $component_name, $is_repeatable, $rows, $component_id);
+				
+				//We use components  as rows and fields in the components as subrows if ACF PRo is installed
+				if ($is_acf_pro_installed) {
+					if (self::COMPONENT_FIELD !== $field->field_type) {
+						$this->formatAndAddField($field, $post_type, '', $is_repeatable, $rows);
+					}
+	
+					if (self::COMPONENT_FIELD === $field->field_type) {
+						$component_id = $field->uuid;
+						$component_name = $field->label;
+						$this->formatAndAddField($field, $post_type, $component_name, $is_repeatable, $rows, $component_id);
+					}
+				} else {
+					// When ACF Pro is not installed, use the original logic:
+					// each row is just as it comes in. (each component field is an individual row)
+					$fields_data = ($field->component->fields ?? [$field]);
+					
+					foreach ($fields_data as $field_data) {
+						$formatted_field = $this->format_fields(
+							$field_data,
+							$post_type,
+							$field->label,
+							$is_repeatable,
+							self::COMPONENT_FIELD === $field->field_type ? $field->uuid : ''
+						);
+	
+						if ($formatted_field) {
+							$rows[] = $formatted_field;
+						}
+					}
 				}
 			}
-
+	
 			$tabs[] = [
 				'id' => $tab->uuid,
 				'label' => $tab->name,
@@ -352,7 +383,7 @@ class Template_Mapper extends Base {
 				'rows' => $rows,
 			];
 		}
-
+	
 		$default_tab = [
 			'id' => 'mapping-defaults',
 			'label' => __('Mapping Defaults', 'gathercontent-import'),
@@ -364,13 +395,15 @@ class Template_Mapper extends Base {
 			'post_type' => $post_type,
 			'gc_status' => $this->get_gc_statuses(),
 		];
-
+	
 		$default_tab['select2:post_author:' . $default_tab['post_author']] = $this->get_default_field_options('post_author');
-
+	
 		$tabs[] = $default_tab;
-
+	
 		return $tabs;
 	}
+	
+	
 
 	private function formatAndAddField($field, $post_type, $component_name, $is_repeatable, &$rows, $component_id = '') {
 		$formatted_field = $this->format_fields($field, $post_type, $component_name, $is_repeatable, $component_id);
