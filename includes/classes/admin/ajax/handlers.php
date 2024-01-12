@@ -76,6 +76,7 @@ class Handlers extends Plugin_Base {
 		add_action( 'wp_ajax_gc_wp_filter_mappings', array( $this, 'gc_wp_filter_mappings_cb' ) );
 		add_action( 'wp_ajax_gc_save_mapping_id', array( $this, 'gc_save_mapping_id_cb' ) );
 		add_action( 'wp_ajax_gc_dismiss_notice', array( $this, 'gc_dismiss_notice_cb' ) );
+		add_action( 'wp_ajax_gc_get_fields_for_group', array( $this, 'gc_get_fields_for_group') );
 	}
 
 	/**
@@ -453,6 +454,21 @@ class Handlers extends Plugin_Base {
 	 */
 	public function verify_nonce( $nonce ) {
 		return wp_verify_nonce( $nonce, GATHERCONTENT_SLUG );
+	}
+
+	public function gc_get_fields_for_group() {
+
+	    $group_key = $_POST['group_key'];
+
+	    // Validate $group_key and perform necessary processing
+	    $fields = acf_get_fields($group_key);
+	    if ($fields === false) {
+	        error_log('Error retrieving ACF fields for group ' . $group_key);
+	        wp_send_json_error(); // Send an error response
+	    }
+
+	    echo json_encode($fields);
+	    wp_die();
 	}
 
 }

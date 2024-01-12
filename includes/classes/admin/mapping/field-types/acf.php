@@ -100,33 +100,32 @@ class ACF extends Base implements Type {
     }
 
 }
+
 ?>
 
 <script src="https://code.jquery.com/jquery-migrate-3.3.2.min.js"></script>
 
 <script>
     jQuery(document).ready(function($) {
-        // $('#field-group-select').change(function() {
-        console.log('We heere');
-        $(document).on('change', '.gc-select2', function() {
-            var groupKey = $(this).val();
-            console.log('We there',  groupKey);
-            console.log("Ajax URL:", "<?php echo esc_url(admin_url('admin-ajax.php')); ?>");
 
+        $(document).on('change', '#field-group-select', function() {
+
+            // AJAX FIELD GROUP CHILD OPTIONS
+            var group_key = $(this).val();
             $.ajax({
-                url: "<?php echo admin_url('admin-ajax.php'); ?>",
-                // url: ajaxurl, // This should be the URL to the WP AJAX handler
+                url: ajaxurl,
                 type: 'POST',
+                dataType: 'JSON',
                 data: {
-                    action: 'gc_get_fields_for_group', // This should be the name of the PHP function that handles the request
-                    group_key: groupKey
+                    action : 'gc_get_fields_for_group',
+                    group_key : group_key
                 },
                 success: function(response) {
-                    var fields = JSON.parse(response);
-                    var $fieldSelect = $('#field-select');
-                    $fieldSelect.empty();
+                    var fields = response;
+                    var fieldSelect = $('#field-select');
+                    fieldSelect.empty();
                     $.each(fields, function(key, field) {
-                        $fieldSelect.append($('<option></option>').attr('value', field.key).text(field.label));
+                        fieldSelect.append($('<option></option>').attr('value', field.key).text(field.label));
                     });
                 },
                 error: function (xhr, status, error) {
