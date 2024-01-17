@@ -36,11 +36,11 @@
 						</td>
 						<td>
 							<# if ( field.component ) { #>
-								<select class="wp-type-select" name="<?php $this->output( 'option_base' ); ?>[mapping][{{ data.name }}][type]">
+								<select class="wp-type-value-select" name="<?php $this->output( 'option_base' ); ?>[mapping][{{ data.name }}][type]">
 									<option value="Component"><?php _e( 'Component', 'gathercontent-import' ); ?></option>
 								</select>
 							<# } else { #>
-								<select class="component-child" name="<?php $this->output( 'option_base' ); ?>[mapping][{{ data.name }}][type]">
+								<select class="wp-type-value-select component-child" name="<?php $this->output( 'option_base' ); ?>[mapping][{{ data.name }}][type]">
 									<option <# if ( '' === data.field_type ) { #>selected="selected"<# } #> value=""><?php _e( 'Unused', 'gathercontent-import' ); ?></option>
 									<?php do_action( 'gathercontent_field_type_option_underscore_template', $this ); ?>
 								</select>

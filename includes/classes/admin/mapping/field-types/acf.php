@@ -83,13 +83,13 @@ class ACF extends Base implements Type {
         $field_groups = acf_get_field_groups();
         ?>
         <# if ( '<?php $this->e_type_id(); ?>' === data.field_type ) { #>
-            <select id="field-group-select" class="gc-select2 gc-select2-add-new wp-type-value-select field-select-group <?php $this->e_type_id(); ?>" name="<?php $view->output( 'option_base' ); ?>[mapping][{{ data.name }}][value]">
+            <select id="field-group-select" class="wp-type-value-select gc-select2 gc-select2-add-new wp-type-value-select field-select-group <?php $this->e_type_id(); ?>" name="<?php $view->output( 'option_base' ); ?>[mapping][{{ data.name }}][value]">
                 <# _.each( <?php echo json_encode($field_groups); ?>, function( group ) { #>
                     <option value="{{ group.key }}">{{ group.title }}</option>
                 <# }); #>
                 <?php $this->underscore_empty_option( __( 'Do Not Import', 'gathercontent-import' ) ); ?>
             </select>
-            <select id="field-select" class="gc-select2 gc-select2-add-new wp-type-value-select field-select <?php $this->e_type_id(); ?>" name="<?php $view->output( 'option_base' ); ?>[mapping][{{ data.name }}][field]">
+            <select id="field-select" class="wp-type-value-select gc-select2 gc-select2-add-new wp-type-value-select field-select <?php $this->e_type_id(); ?>" name="<?php $view->output( 'option_base' ); ?>[mapping][{{ data.name }}][field]">
                 <!-- Options will be populated dynamically -->
             </select>
         <# } #>
@@ -114,17 +114,18 @@ class ACF extends Base implements Type {
             let select_options = $(this).children('option');
             $(select_fields).empty();
             select_fields.append($('<option></option>').attr('value', '').text('Unused'));
-            //console.log(select_options);
+
+            // ADDS SELECTED 
             $(select_options).each(function() {
                 let option_value = $(this).val();
-                console.log(option_value);
                 if($(this).val() === group_key) {
-                    console.log('match');
                     $(this).attr('selected','selected');
+                } else {
+                    $(this).attr('selected',null);
                 }
-            })
+            });
 
-
+            // AJAX LOAD FIELD GROUP
             $.ajax({
                 url: ajaxurl,
                 type: 'POST',
@@ -134,8 +135,8 @@ class ACF extends Base implements Type {
                     group_key : group_key
                 },
                 success: function(response) {
-                    var fields = response;
-                    var fieldSelect = select_field;
+                    let fields = response;
+                    let fieldSelect = select_field;
                     fieldSelect.empty();
                     fieldSelect.append($('<option></option>').attr('value', '').text('Unused'));
                     $.each(fields, function(key, field) {
@@ -168,8 +169,8 @@ class ACF extends Base implements Type {
                     field_parent : field_parent
                 },
                 success: function(response) {
-                    var fields = response;
-                    var fieldSelect = select_fields;
+                    let fields = response;
+                    let fieldSelect = select_fields;
                     fieldSelect.empty();
                     $.each(fields, function(key, field) {
                         if(field.key == field_val) {
@@ -190,5 +191,6 @@ class ACF extends Base implements Type {
                 }
             });
         });
+
     }); 
 </script>
