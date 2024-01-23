@@ -2,8 +2,10 @@
 namespace GatherContent\Importer\Admin\Mapping\Field_Types;
 
 use GatherContent\Importer\Views\View;
+use WP_Query;
 
 class ACF extends Base implements Type {
+
 
     protected $type_id = 'wp-type-acf';
 
@@ -68,7 +70,7 @@ class ACF extends Base implements Type {
         ?>
         
         <# if ( '<?php $this->e_type_id(); ?>' === data.field_type ) { #>
-            <select class="gc-select2 gc-select2-add-new wp-type-value-select <?php $this->e_type_id(); ?>" name="<?php $view->output( 'option_base' ); ?>[mapping][{{ data.name }}][value]">
+            <select class="hello gc-select2 gc-select2-add-new wp-type-value-select <?php $this->e_type_id(); ?>" name="<?php $view->output( 'option_base' ); ?>[mapping][{{ data.name }}][value]">
                 <# _.each( <?php echo json_encode($field_groups); ?>, function( group ) { #>
                     <option value="{{ group.key }}">{{ group.title }}</option>
                 <# }); #>
@@ -79,23 +81,54 @@ class ACF extends Base implements Type {
     }
 
 
+
     public function underscore_template ( View $view ) {
+        global $wpdb;
+
+        $mapping_fields = array();
         $field_groups = acf_get_field_groups();
+        $mapping_id = absint( $this->_get_val( 'mapping' ) );
+        
+        $query = "SELECT post_content FROM wp_posts WHERE ID = $mapping_id LIMIT 1";
+        $results = $wpdb->get_results($query);
+        foreach($results[0] as $key => $value) {
+            $temp_mapping = json_decode($value, JSON_PRETTY_PRINT);
+            array_push($mapping_fields, $temp_mapping['mapping']);
+        }
+        //print_r($mapping_fields[0]);
         ?>
         <# if ( '<?php $this->e_type_id(); ?>' === data.field_type ) { #>
-            <select id="field-group-select" class="wp-type-value-select gc-select2 gc-select2-add-new wp-type-value-select field-select-group <?php $this->e_type_id(); ?>" name="<?php $view->output( 'option_base' ); ?>[mapping][{{ data.name }}][value]">
+
+            <?php $data_name = '{{ data.name }}'; ?>
+            <?php
+            foreach($mapping_fields[0] as $key => $fields) {
+                echo '<pre>';
+                var_dump($data_name);
+                //echo bin2hex($data_name);
+                echo '<br/>';
+                //echo bin2hex($key);
+                var_dump($key);
+                echo '<br/>';
+                echo '</pre>';
+                if($data_name == $key) {
+                    echo 'YES';
+                }
+            }
+
+            ?>
+            <select id="field-group-select" data-set="{{data.name}}" class="wp-type-value-select gc-select2 gc-select2-add-new wp-type-value-select field-select-group <?php $this->e_type_id(); ?>" name="<?php $view->output( 'option_base' ); ?>[mapping][{{ data.name }}][value]">
                 <# _.each( <?php echo json_encode($field_groups); ?>, function( group ) { #>
-                    <option value="{{ group.key }}">{{ group.title }}</option>
+                    <option <# if ( group.key === data.field_value ) { #>selected="selected"<# } #> data-set="{{data.field_value}}" value="{{ group.key }}">{{ group.title }}</option>
                 <# }); #>
                 <?php $this->underscore_empty_option( __( 'Do Not Import', 'gathercontent-import' ) ); ?>
             </select>
-            <select id="field-select" class="wp-type-value-select gc-select2 gc-select2-add-new wp-type-value-select field-select <?php $this->e_type_id(); ?>" name="<?php $view->output( 'option_base' ); ?>[mapping][{{ data.name }}][field]">
+            <span style="display: block; margin: 5px 0;"></span>
+            <select id="field-select" data-set="{{data.field_value.field}}" class="wp-type-value-select gc-select2 gc-select2-add-new wp-type-value-select field-select <?php $this->e_type_id(); ?>" name="<?php $view->output( 'option_base' ); ?>[mapping][{{ data.name }}][field]">
                 <!-- Options will be populated dynamically -->
             </select>
         <# } #>
         <?php
     }
-
 }
 
 ?>
@@ -105,9 +138,13 @@ class ACF extends Base implements Type {
 <script>
     jQuery(document).ready(function($) {
 
+        setTimeout(function() {
+            field_group_check();
+        },100);
+
         $(document).on('change', '.field-select-group', function() {
 
-            // AJAX FIELD GROUP CHILD OPTIONS
+            //AJAX FIELD GROUP CHILD OPTIONS
             let group_key = $(this).val();
             let select_field = $(this).siblings('.field-select');
             let select_fields = $(this).parent('.column').siblings('.column').find('.component-child');
@@ -191,6 +228,60 @@ class ACF extends Base implements Type {
                 }
             });
         });
+
+        function field_group_check() {
+            $('.field-select-group').each(function() {
+                let field_set = $(this).attr('data-set');
+
+                if(field_set){
+                    //AJAX FIELD GROUP CHILD OPTIONS
+                    let group_key = $(this).val();
+                    let select_field = $(this).siblings('.field-select');
+                    let select_fields = $(this).parent('.column').siblings('.column').find('.component-child');
+                    let select_options = $(this).children('option');
+                    $(select_fields).empty();
+                    select_fields.append($('<option></option>').attr('value', '').text('Unused'));
+
+                    // ADDS SELECTED 
+                    $(select_options).each(function() {
+                        let option_value = $(this).val();
+                        if($(this).val() === group_key) {
+                            $(this).attr('selected','selected');
+                        } else {
+                            $(this).attr('selected',null);
+                        }
+                    });
+
+                    // AJAX LOAD FIELD GROUP
+                    $.ajax({
+                        url: ajaxurl,
+                        type: 'POST',
+                        dataType: 'JSON',
+                        data: {
+                            action : 'gc_get_fields_for_group',
+                            group_key : group_key
+                        },
+                        success: function(response) {
+                            let fields = response;
+                            let fieldSelect = select_field;
+                            fieldSelect.empty();
+                            fieldSelect.append($('<option></option>').attr('value', '').text('Unused'));
+                            $.each(fields, function(key, field) {
+                                fieldSelect.append($('<option></option>').attr('value', field.key).text(field.label));
+                            });
+                        },
+                        error: function (xhr, status, error) {
+                            console.log('AJAX Request Error:');
+                            console.log('Status:', status);
+                            console.log('Error:', error);
+                            console.log('Response Text:', xhr.responseText);
+                            console.log('Data Sent:', xhr.data); // Log the data sent in the request
+                        }
+                    });
+                }
+            });
+        }
+
 
     }); 
 </script>

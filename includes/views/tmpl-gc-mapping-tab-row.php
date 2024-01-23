@@ -18,10 +18,10 @@
 		<li><strong><?php _e( 'Description:', 'gathercontent-import' ); ?></strong> {{ data.instructions }}</li>
 		<# } #>
 
-		<# if ( data.component ) { #>
+		<# if ( data.component ) { index = 1; #>
 			<table>
-				<# _.each(data.component.fields, function(field) { #>
-					<!-- <pre>{{ JSON.stringify(field, null, 2) }}</pre> -->
+				<# _.each(data.component.fields, function(field) {  #>
+					
 
 					<tr>
 						<td>
@@ -40,14 +40,15 @@
 									<option value="Component"><?php _e( 'Component', 'gathercontent-import' ); ?></option>
 								</select>
 							<# } else { #>
-								<select class="wp-type-value-select component-child" name="<?php $this->output( 'option_base' ); ?>[mapping][{{ data.name }}][type]">
+								<select class="wp-type-value-select component-child" data-label="" data-value="" data-index="{{index}}" name="<?php $this->output( 'option_base' ); ?>[mapping][{{ data.name }}][sub_fields][{{index}}]">
 									<option <# if ( '' === data.field_type ) { #>selected="selected"<# } #> value=""><?php _e( 'Unused', 'gathercontent-import' ); ?></option>
 									<?php do_action( 'gathercontent_field_type_option_underscore_template', $this ); ?>
 								</select>
 							<# } #>
 						</td>
 					</tr>
-				<# }); #>
+					<!-- <pre>{{ JSON.stringify(data.component.fields[index], null, 2) }}</pre> -->
+				<# index = index + 1; }); #>
 			</table>
 		<# } #>
 	</ul>

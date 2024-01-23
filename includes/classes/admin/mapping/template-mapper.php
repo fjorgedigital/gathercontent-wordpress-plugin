@@ -237,7 +237,7 @@ class Template_Mapper extends Base {
 			new Field_Types\Taxonomy( $this->post_types() ),
 			new Field_Types\Meta(),
 			new Field_Types\Media(),
-			// new Field_Types\ACF(),
+			//new Field_Types\ACF(),
 		);
 
 		$is_acf_installed = class_exists('acf_pro');
