@@ -22,7 +22,6 @@
 			<table>
 				<# _.each(data.component.fields, function(field) {  #>
 					
-
 					<tr>
 						<td>
 							<# if ( field.metadata && field.metadata.repeatable && field.metadata.repeatable.isRepeatable ) { #>

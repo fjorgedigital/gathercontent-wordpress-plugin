@@ -95,37 +95,39 @@ class ACF extends Base implements Type {
             $temp_mapping = json_decode($value, JSON_PRETTY_PRINT);
             array_push($mapping_fields, $temp_mapping['mapping']);
         }
-        //print_r($mapping_fields[0]);
         ?>
         <# if ( '<?php $this->e_type_id(); ?>' === data.field_type ) { #>
 
-            <?php $data_name = '{{ data.name }}'; ?>
-            <?php
-            foreach($mapping_fields[0] as $key => $fields) {
-                echo '<pre>';
-                var_dump($data_name);
-                //echo bin2hex($data_name);
-                echo '<br/>';
-                //echo bin2hex($key);
-                var_dump($key);
-                echo '<br/>';
-                echo '</pre>';
-                if($data_name == $key) {
-                    echo 'YES';
-                }
-            }
+            <?php 
 
-            ?>
-            <select id="field-group-select" data-set="{{data.name}}" class="wp-type-value-select gc-select2 gc-select2-add-new wp-type-value-select field-select-group <?php $this->e_type_id(); ?>" name="<?php $view->output( 'option_base' ); ?>[mapping][{{ data.name }}][value]">
+            foreach($mapping_fields[0] as $key => $fields) { 
+
+                // IF data.name from api and the content key match
+                ?>
+                <# if ( '<?php echo $key; ?>' == data.name ) { #>
+                    <?php 
+                    
+                    foreach($fields as $child_key => $child_fields) {
+                        if($child_key == 'field') {
+                            $field_key = $child_fields;
+                        }
+                    }
+
+                    ?>
+                <# } #>
+
+            <?php } ?>
+            <select id="field-group-select-{{data.name}}" data-set="{{data.name}}" class="wp-type-value-select gc-select2 gc-select2-add-new wp-type-value-select field-select-group <?php $this->e_type_id(); ?>" name="<?php $view->output( 'option_base' ); ?>[mapping][{{ data.name }}][value]">
                 <# _.each( <?php echo json_encode($field_groups); ?>, function( group ) { #>
-                    <option <# if ( group.key === data.field_value ) { #>selected="selected"<# } #> data-set="{{data.field_value}}" value="{{ group.key }}">{{ group.title }}</option>
+                    <option data-group="{{group.key}}" <# if ( group.key === data.field_value ) { #>selected="selected"<# } #> data-set="{{data.field_value}}" value="{{ group.key }}">{{ group.title }}</option>
                 <# }); #>
                 <?php $this->underscore_empty_option( __( 'Do Not Import', 'gathercontent-import' ) ); ?>
             </select>
             <span style="display: block; margin: 5px 0;"></span>
-            <select id="field-select" data-set="{{data.field_value.field}}" class="wp-type-value-select gc-select2 gc-select2-add-new wp-type-value-select field-select <?php $this->e_type_id(); ?>" name="<?php $view->output( 'option_base' ); ?>[mapping][{{ data.name }}][field]">
+            <select id="field-select-{{data.name}}" data-field-value="<?php echo $field_key; ?>" class="wp-type-value-select gc-select2 gc-select2-add-new field-select <?php $this->e_type_id(); ?>" name="<?php $view->output( 'option_base' ); ?>[mapping][{{ data.name }}][field]">
                 <!-- Options will be populated dynamically -->
             </select>
+            
         <# } #>
         <?php
     }
@@ -138,9 +140,27 @@ class ACF extends Base implements Type {
 <script>
     jQuery(document).ready(function($) {
 
+        // Set FIELD if saved
+        function set_field() {
+            $('.field-select').each(function() {
+                let select_options = $(this).children('option');
+                let field_name = $(this).attr('data-field-value');
+                if(field_name) {
+                    $(select_options).each(function() {
+                        let option_value = $(this).val();
+                        if($(this).val() === field_name) {
+                            $(this).attr('selected','selected');
+                        } else {
+                            $(this).attr('selected',null);
+                        }
+                    });
+                }
+            });
+        }
+
         setTimeout(function() {
             field_group_check();
-        },100);
+        },300);
 
         $(document).on('change', '.field-select-group', function() {
 
@@ -269,6 +289,7 @@ class ACF extends Base implements Type {
                             $.each(fields, function(key, field) {
                                 fieldSelect.append($('<option></option>').attr('value', field.key).text(field.label));
                             });
+                            set_field();
                         },
                         error: function (xhr, status, error) {
                             console.log('AJAX Request Error:');
