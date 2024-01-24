@@ -86,7 +86,7 @@ class ACF extends Base implements Type {
         global $wpdb;
 
         $mapping_fields = array();
-        $sub_fields = array();
+        
         $field_groups = acf_get_field_groups();
         $mapping_id = absint( $this->_get_val( 'mapping' ) );
         
@@ -96,6 +96,7 @@ class ACF extends Base implements Type {
             $temp_mapping = json_decode($value, JSON_PRETTY_PRINT);
             array_push($mapping_fields, $temp_mapping['mapping']);
         }
+        //print_r($mapping_fields[0]);
         ?>
         <# if ( '<?php $this->e_type_id(); ?>' === data.field_type ) { #>
 
@@ -104,6 +105,8 @@ class ACF extends Base implements Type {
             foreach($mapping_fields[0] as $key => $fields) { 
 
                 // IF data.name from api and the content key match
+                $sub_fields = array();
+                $field_key = '';
                 ?>
                 <# if ( '<?php echo $key; ?>' == data.name ) { #>
                     <?php 
@@ -117,19 +120,27 @@ class ACF extends Base implements Type {
                         }
                     }
 
+                    // If there is a field field
+                    if($field_key) {
+                        echo '<div style="display:none;" class="field-key" data-set="{{data.name}}" data-key="' . $field_key . '">' . $field_key . '</div>';
+                    }
+
+                    // If there are sub-fields saved
+                    if(!empty($sub_fields[0])) {
+                        echo '<ul class="sub-fields" data-set="{{data.name}}" style="display:none">';
+                            $index = 0;
+                            foreach($sub_fields[0] as $sub_field) {
+                                echo '<li class="sub-field" id="sub-field-{{data.name}}-' . $index . '" data-value="' . $sub_field . '">' . $sub_field . '</li>';
+                                $index++;
+                            }
+                        echo '</ul>';
+                    }
+
                     ?>
+
                 <# } #>
 
-            <?php }
-                echo '<ul class="sub-fields" data-set="{{data.name}}" style="display:none">';
-                $index = 0;
-                foreach($sub_fields[0] as $sub_field) {
-                    echo '<li class="sub-field" id="sub-field-{{data.name}}-' . $index . '" data-value="' . $sub_field . '">' . $sub_field . '</li>';
-                    $index++;
-                }
-                echo '</ul>';
-
-            ?>
+            <?php } ?>
             <select id="field-group-select-{{data.name}}" data-set="{{data.name}}" class="wp-type-value-select gc-select2 gc-select2-add-new wp-type-value-select field-select-group <?php $this->e_type_id(); ?>" name="<?php $view->output( 'option_base' ); ?>[mapping][{{ data.name }}][value]">
                 <# _.each( <?php echo json_encode($field_groups); ?>, function( group ) { #>
                     <option data-group="{{group.key}}" <# if ( group.key === data.field_value ) { #>selected="selected"<# } #> data-set="{{data.field_value}}" value="{{ group.key }}">{{ group.title }}</option>
@@ -137,7 +148,7 @@ class ACF extends Base implements Type {
                 <?php $this->underscore_empty_option( __( 'Do Not Import', 'gathercontent-import' ) ); ?>
             </select>
             <span style="display: block; margin: 5px 0;"></span>
-            <select id="field-select-{{data.name}}" data-field-value="<?php echo $field_key; ?>" class="wp-type-value-select gc-select2 gc-select2-add-new field-select <?php $this->e_type_id(); ?>" name="<?php $view->output( 'option_base' ); ?>[mapping][{{ data.name }}][field]">
+            <select id="field-select-{{data.name}}" data-set="{{data.name}}" class="wp-type-value-select gc-select2 gc-select2-add-new field-select <?php $this->e_type_id(); ?>" name="<?php $view->output( 'option_base' ); ?>[mapping][{{ data.name }}][field]">
                 <!-- Options will be populated dynamically -->
             </select>
             
@@ -157,11 +168,19 @@ class ACF extends Base implements Type {
         function set_field() {
             $('.field-select').each(function() {
                 let select_options = $(this).children('option');
-                let field_name = $(this).attr('data-field-value');
-                if(field_name) {
+                let field_set = $(this).attr('data-set');
+                let field_key = '';
+                $('.field-key').each(function() {
+                    let field_key_set = $(this).attr('data-set');
+                    let field_key_value = $(this).attr('data-key');
+                    if(field_set == field_key_set) {
+                        field_key = field_key_value;
+                    }
+                });
+                if(field_key) {
                     $(select_options).each(function() {
                         let option_value = $(this).val();
-                        if($(this).val() === field_name) {
+                        if($(this).val() === field_key) {
                             $(this).attr('selected','selected');
                         } else {
                             $(this).attr('selected',null);
@@ -201,7 +220,7 @@ class ACF extends Base implements Type {
         // Set saved ACF content
         setTimeout(function() {
             field_group_check();
-        },500);
+        },200);
 
         $(document).on('change', '.field-select-group', function() {
 
