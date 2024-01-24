@@ -33,13 +33,13 @@
 								<li><strong><?php _e( 'Instructions:', 'gathercontent-import' ); ?></strong> {{ field.instructions }}</li>
 							</ul>
 						</td>
-						<td>
+						<td data-set="{{ data.name }}">
 							<# if ( field.component ) { #>
 								<select class="wp-type-value-select" name="<?php $this->output( 'option_base' ); ?>[mapping][{{ data.name }}][type]">
 									<option value="Component"><?php _e( 'Component', 'gathercontent-import' ); ?></option>
 								</select>
 							<# } else { #>
-								<select class="wp-type-value-select component-child" data-label="" data-value="" data-index="{{index}}" name="<?php $this->output( 'option_base' ); ?>[mapping][{{ data.name }}][sub_fields][{{index}}]">
+								<select id="component-child-{{ data.name }}-{{ index }}" data-set="{{ data.name }}" class="wp-type-value-select component-child" data-index="{{index}}" name="<?php $this->output( 'option_base' ); ?>[mapping][{{ data.name }}][sub_fields][{{index}}]">
 									<option <# if ( '' === data.field_type ) { #>selected="selected"<# } #> value=""><?php _e( 'Unused', 'gathercontent-import' ); ?></option>
 									<?php do_action( 'gathercontent_field_type_option_underscore_template', $this ); ?>
 								</select>
