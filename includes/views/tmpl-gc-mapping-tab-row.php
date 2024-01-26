@@ -1,4 +1,3 @@
-
 <td <# if (data.typeName === 'component') { #> class="gc-component-disabled column"<# } #>>
 	<# if ( ( data.limit && data.limit_type ) || data.instructions || data.typeName ) { #>
 	<# if ( ( data.is_repeatable ) ) { #>

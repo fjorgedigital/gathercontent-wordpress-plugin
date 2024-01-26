@@ -153,6 +153,28 @@ class ACF extends Base implements Type {
 <script>
     jQuery(document).ready(function($) {
 
+        // ON PAGE LOAD
+        // Run Type Select Check
+            // Run group options
+                // Run group selected
+                    // Run field options (ajax)
+                        // Run field selected
+                            // Run sub-field options (ajax)
+                                // Run sub-field selected
+
+        // ON GROUP SELECT
+        // Run field options
+            // Run sub-field options (ajax)
+                // Run sub-field selected
+
+        // ON FIELD SELECT
+        // Run sub-field options (ajax)
+            // Run sub-field selected
+
+        // ON SUB FIELD SELECT
+        // nothing
+
+
         // Set FIELD if saved
         function set_field() {
             $('.field-select').each(function() {
@@ -206,31 +228,186 @@ class ACF extends Base implements Type {
             });
         }
 
+
         // Set saved ACF content
         setTimeout(function() {
-            field_group_check();
+            group_type_change();
             group_change();
             field_change();
         },100);
 
+        setTimeout(function() {
+            set_field();
+        },300);
+
+        setTimeout(function() {
+            field_group_check();
+        },700);
+        
         // Loads Sub Fields if available
         $(window).on('ajaxComplete', function() {
-            setTimeout(function() {
-                set_sub_fields();
-            },200);
+            group_type_change();
+            group_change();
+            field_change();
+            set_sub_fields();
         });
+
+        function group_type_change() {
+            $('.wp-type-select').on('change',function() {
+                setTimeout(function() {
+                    group_change();
+                    field_change();
+                },200);
+            });
+        }
 
         // On ACF Group Change
         function group_change() {
             $('.field-select-group').on('change',function() {
-                field_group_check();
+                let field_set = $(this).attr('data-set');
+                if(field_set){
+                    //AJAX FIELD GROUP CHILD OPTIONS
+                    let group_key = $(this).val();
+                    let select_field = $(this).siblings('.field-select');
+                    let select_fields = $(this).parent('.column').siblings('.column').find('.component-child');
+                    let select_options = $(this).children('option');
+                    $(select_fields).empty();
+                    select_fields.append($('<option></option>').attr('value', '').text('Unused'));
+
+                    // ADDS SELECTED 
+                    $(select_options).each(function() {
+                        let option_value = $(this).val();
+                        if($(this).val() === group_key) {
+                            $(this).attr('selected','selected');
+                        } else {
+                            $(this).attr('selected',null);
+                        }
+                    });
+
+                    // AJAX LOAD FIELD GROUP
+                    $.ajax({
+                        url: ajaxurl,
+                        type: 'POST',
+                        dataType: 'JSON',
+                        data: {
+                            action : 'gc_get_fields_for_group',
+                            group_key : group_key
+                        },
+                        success: function(response) {
+                            let fields = response;
+                            let fieldSelect = select_field;
+                            fieldSelect.empty();
+                            fieldSelect.append($('<option></option>').attr('value', '').text('Unused'));
+                            $.each(fields, function(key, field) {
+                                fieldSelect.append($('<option></option>').attr('value', field.key).text(field.label));
+                            });
+                            
+                            // SET FIELDS
+                            let field_select = $(this).siblings('.field-select');
+                            let select_options = $(field_select).children('option');
+                            let field_set = $(field_select).attr('data-set');
+                            let field_key = '';
+                            $('.field-key').each(function() {
+                                let field_key_set = $(this).attr('data-set');
+                                let field_key_value = $(this).attr('data-key');
+                                if(field_set == field_key_set) {
+                                    field_key = field_key_value;
+                                }
+                            });
+                            if(field_key) {
+                                $(select_options).each(function() {
+                                    let option_value = $(this).val();
+                                    if($(this).val() === field_key) {
+                                        $(this).attr('selected','selected');
+                                    } else {
+                                        $(this).attr('selected',null);
+                                    }
+                                });
+                            }
+
+                            // GET SUB FIELDS
+                            let field_val = $(this).val();
+                            if(field_val){
+                                let field_sib_val = $(this).siblings('.field-select').val();
+                                let sub_fields = $(this).parent('.column').siblings('.column').find('.component-child');
+                                setTimeout(function() {
+                                    if(select_fields) {
+                                        $.ajax({
+                                            url: ajaxurl,
+                                            type: 'POST',
+                                            dataType: 'JSON',
+                                            data: {
+                                                action : 'gc_get_fields',
+                                                field_parent : field_val
+                                            },
+                                            success: function(response) {
+                                                console.log(response);
+                                                let fields = response;
+                                                let fieldSelect = sub_fields;
+                                                fieldSelect.empty();
+                                                $.each(fields, function(key, field) {
+                                                    if(field.key == field_sib_val) {
+                                                        fieldSelect.append($('<option></option>').attr('value', '').text('Unused'));
+                                                        $.each(fiesub_fields, function(key, field) {
+                                                            fieldSelect.append($('<option></option>').attr('value', field.key).text(field.label));
+                                                        });
+                                                    }
+                                                    
+                                                });
+                                            },
+                                            error: function () {
+                                                //console.log('AJAX Request Error:');
+                                            }
+                                        });
+                                    }
+                                },100);
+                            }
+                            
+                        },
+                        error: function () {
+                            //console.log('AJAX Request Error:');
+                        }
+                    });
+                }
             });
         }
+
+
 
         // On ACF Field Change
         function field_change() {
             $('.field-select').on('change',function() {
-                sub_fields_populate();
+                // AJAX FIELD GROUP CHILD OPTIONS
+                let field_parent = $(this).siblings('.field-select-group').val();
+                let field_val = $(this).val();
+                let select_fields = $(this).parent('.column').siblings('.column').find('.component-child');
+
+                $.ajax({
+                    url: ajaxurl,
+                    type: 'POST',
+                    dataType: 'JSON',
+                    data: {
+                        action : 'gc_get_fields',
+                        field_parent : field_parent
+                    },
+                    success: function(response) {
+                        let fields = response;
+                        let fieldSelect = select_fields;
+                        fieldSelect.empty();
+                        $.each(fields, function(key, field) {
+                            if(field.key == field_val) {
+                                fieldSelect.append($('<option></option>').attr('value', '').text('Unused'));
+                                $.each(field.sub_fields, function(key, field) {
+                                    fieldSelect.append($('<option></option>').attr('value', field.key).text(field.label));
+                                });
+                            }
+                            
+                        });
+                    },
+                    error: function () {
+                        //console.log('AJAX Request Error:');
+                    }
+                });
             });
         }
 
@@ -238,7 +415,6 @@ class ACF extends Base implements Type {
         function field_group_check() {
             $('.field-select-group').each(function() {
                 let field_set = $(this).attr('data-set');
-
                 if(field_set){
                     //AJAX FIELD GROUP CHILD OPTIONS
                     let group_key = $(this).val();
@@ -278,14 +454,10 @@ class ACF extends Base implements Type {
                             set_field();
                             sub_fields_populate();
                         },
-                        error: function (xhr, status, error) {
-                            console.log('AJAX Request Error:');
-                            console.log('Status:', status);
-                            console.log('Error:', error);
-                            console.log('Response Text:', xhr.responseText);
-                            console.log('Data Sent:', xhr.data); // Log the data sent in the request
+                        error: function () {
+                            //console.log('AJAX Request Error:');
                         }
-                    });
+                    }); 
                 }
             });
         }
@@ -293,7 +465,6 @@ class ACF extends Base implements Type {
         // Repeater Sub Field Populate
         function sub_fields_populate() {
             $('.field-select').each(function() {
-
                 // AJAX FIELD GROUP CHILD OPTIONS
                 let field_parent = $(this).siblings('.field-select-group').val();
                 let field_val = $(this).val();
@@ -321,12 +492,8 @@ class ACF extends Base implements Type {
                             
                         });
                     },
-                    error: function (xhr, status, error) {
-                        console.log('AJAX Request Error:');
-                        console.log('Status:', status);
-                        console.log('Error:', error);
-                        console.log('Response Text:', xhr.responseText);
-                        console.log('Data Sent:', xhr.data); // Log the data sent in the request
+                    error: function () {
+                        //console.log('AJAX Request Error:');
                     }
                 });
             });
