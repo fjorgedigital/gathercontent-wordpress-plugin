@@ -38,7 +38,7 @@
 									<option value="Component"><?php _e( 'Component', 'gathercontent-import' ); ?></option>
 								</select>
 							<# } else { #>
-								<select id="component-child-{{ data.name }}-{{ index }}" data-set="{{ data.name }}" class="wp-type-value-select component-child" data-index="{{index}}" name="<?php $this->output( 'option_base' ); ?>[mapping][{{ data.name }}][sub_fields][{{index}}]">
+								<select id="component-child-{{ data.name }}-{{ index }}" data-set="{{ data.name }}" class="component-child" data-index="{{index}}" name="<?php $this->output( 'option_base' ); ?>[mapping][{{ data.name }}][sub_fields][{{index}}]">
 									<option <# if ( '' === data.field_type ) { #>selected="selected"<# } #> value=""><?php _e( 'Unused', 'gathercontent-import' ); ?></option>
 									<?php do_action( 'gathercontent_field_type_option_underscore_template', $this ); ?>
 								</select>
@@ -56,13 +56,13 @@
 </td>
 <td <# if (data.typeName === 'component') { #> class="gc-component-disabled column"<# } #>>
     <# if ( data.component ) { #>
-        <select class="wp-type-select" name="<?php $this->output( 'option_base' ); ?>[mapping][{{ data.name }}][type]">
+        <select class="wp-type-select type-select" name="<?php $this->output( 'option_base' ); ?>[mapping][{{ data.name }}][type]">
 			<option <# if ( '' === data.field_type ) { #>selected="selected"<# } #> value=""><?php _e( 'Unused', 'gathercontent-import' ); ?></option>
 			<?php do_action( 'gathercontent_field_type_option_underscore_template', $this ); ?>
         </select>
 		<?php do_action( 'gathercontent_field_type_underscore_template', $this ); ?>
     <# } else { #>
-        <select class="wp-type-select" name="<?php $this->output( 'option_base' ); ?>[mapping][{{ data.name }}][type]">
+        <select class="wp-type-select type-select" name="<?php $this->output( 'option_base' ); ?>[mapping][{{ data.name }}][type]">
             <option <# if ( '' === data.field_type ) { #>selected="selected"<# } #> value=""><?php _e( 'Unused', 'gathercontent-import' ); ?></option>
             <?php do_action( 'gathercontent_field_type_option_underscore_template', $this ); ?>
         </select>

@@ -76,8 +76,6 @@ class Handlers extends Plugin_Base {
 		add_action( 'wp_ajax_gc_wp_filter_mappings', array( $this, 'gc_wp_filter_mappings_cb' ) );
 		add_action( 'wp_ajax_gc_save_mapping_id', array( $this, 'gc_save_mapping_id_cb' ) );
 		add_action( 'wp_ajax_gc_dismiss_notice', array( $this, 'gc_dismiss_notice_cb' ) );
-		add_action( 'wp_ajax_gc_get_fields_for_group', array( $this, 'gc_get_fields_for_group') );
-		add_action( 'wp_ajax_gc_get_fields', array( $this, 'gc_get_fields') );
 	}
 
 	/**
@@ -455,79 +453,6 @@ class Handlers extends Plugin_Base {
 	 */
 	public function verify_nonce( $nonce ) {
 		return wp_verify_nonce( $nonce, GATHERCONTENT_SLUG );
-	}
-
-	/**
-	 * Ajax search for field group.
-	 *
-	 * @since  3.0.0
-	 *
-	 * @param  array $group_key field group key.
-	 *
-	 * @return array               Array of results for select2 population.
-	 */
-	public function gc_get_fields_for_group() {
-		global $wpdb;
-        global $wp_query;
-
-        // CUSTOM VARIABLES
-        $data_results = array();
-	    
-	    // FIELD GROUPS
-        $groups = "SELECT * FROM wp_posts WHERE post_type = 'acf-field-group' AND post_status = 'publish' AND post_parent = 0";
-        $group_results = $wpdb->get_results($groups);
-        $group_fields = array(); // Parent keys with child field arrays
-        foreach($group_results as $group) {
-            $group_id = $group->ID;
-            $group_key = $group->post_name;
-            $fields_array = array();
-            $fields_query = "SELECT * FROM wp_posts WHERE post_type = 'acf-field' AND post_parent = '$group_id'";
-            $fields_results = $wpdb->get_results($fields_query);
-            foreach($fields_results as $field) {
-                $field_title = $field->post_title;
-                $field_id = $field->ID;
-                $field_name = $field->post_name;
-                $field_fields = array('ID' => $field_id, 'post_title' => $field_title, 'post_name' => $field_name);
-                $fields_array[] = $field_fields;
-            }
-            $group_fields['group_' . $group_id] = $fields_array;
-        }
-        $data_results['field_groups'] = $group_fields;
-
-        // SAVED DATA
-        $mapping_fields = array();
-        $mapping_id = $_POST['template_id'];
-        $query = "SELECT post_content FROM wp_posts WHERE ID = $mapping_id LIMIT 1";
-        $results = $wpdb->get_results($query);
-        foreach($results[0] as $key => $value) {
-            $temp_mapping = json_decode($value, JSON_PRETTY_PRINT);
-            $mapping_fields['mapping'] = $temp_mapping['mapping'];
-        }
-        $data_results['saved'] = $mapping_fields;
-
-	    echo json_encode($data_results);
-	    wp_die();
-	}
-
-	/**
-	 * Ajax search for field group options.
-	 *
-	 * @since  3.0.0
-	 *
-	 * @param  array $field_parent field group key.
-	 *
-	 * @return array               Array of results for select2 population of field group options.
-	 */
-	public function gc_get_fields() {
-
-	    $field_parent = $_POST['field_parent'];
-	    $fields = acf_get_fields($field_parent);
-	    if ($fields === false) {
-	        error_log('Error retrieving ACF fields for group ' . $field_parent);
-	        wp_send_json_error(); // Send an error response
-	    }
-	    echo json_encode($fields);
-	    wp_die();
 	}
 
 }
