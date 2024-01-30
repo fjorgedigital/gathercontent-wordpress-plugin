@@ -34,7 +34,7 @@
 						</td>
 						<td class="acf-components" data-set="{{ data.name }}">
 							<# if ( field.component ) { #>
-								<select class="wp-type-value-select" name="<?php $this->output( 'option_base' ); ?>[mapping][{{ data.name }}][type]">
+								<select class="" name="<?php $this->output( 'option_base' ); ?>[mapping][{{ data.name }}][type]">
 									<option value="Component"><?php _e( 'Component', 'gathercontent-import' ); ?></option>
 								</select>
 							<# } else { #>
