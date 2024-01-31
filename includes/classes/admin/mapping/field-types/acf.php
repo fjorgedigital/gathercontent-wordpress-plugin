@@ -179,9 +179,11 @@ class ACF extends Base implements Type {
             }
             load_functions();
         },200);
-            
+
+        
         // LOAD FUNCTIONS
         function load_functions() {
+            component_init();
             type_select();
             group_init();
             group_select();
@@ -189,10 +191,19 @@ class ACF extends Base implements Type {
             fields_select();
         }
 
+        // CLEAT COMPONENT CHILDREN
+        function component_init() {
+            $('select.component-child').each(function() {
+                $(this).empty();
+                $(this).append('<option val="">Unused</option>')
+            });
+        }
+
         // TYPE CHANGE
         function type_select() {
             $(document).on('change','.type-select',function() {
                 fields_select();
+                component_init();
             })
         }
 
@@ -209,6 +220,7 @@ class ACF extends Base implements Type {
             $(document).on('change','.field-select-group',function() {
                 let select_id = $(this).attr('id');
                 get_group_fields(select_id);
+                component_init();
             });
         }
 
