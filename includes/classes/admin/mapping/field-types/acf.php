@@ -251,10 +251,11 @@ class ACF extends Base implements Type {
             // SAVED DATA
             let saved_field = '';
             let saved_sub_fields = '';
-            if($(saved_fields).length > 0) {
+            if(saved_fields[data_set]) {
                 saved_field = saved_fields[data_set]['field'];
                 saved_sub_fields = saved_fields[data_set]['sub_fields'];
             }
+            
 
             // FIELD OPTIONS
             let components = $('.acf-components[data-set="' + data_set + '"').children('select');
