@@ -76,8 +76,6 @@ class Handlers extends Plugin_Base {
 		add_action( 'wp_ajax_gc_wp_filter_mappings', array( $this, 'gc_wp_filter_mappings_cb' ) );
 		add_action( 'wp_ajax_gc_save_mapping_id', array( $this, 'gc_save_mapping_id_cb' ) );
 		add_action( 'wp_ajax_gc_dismiss_notice', array( $this, 'gc_dismiss_notice_cb' ) );
-		add_action( 'wp_ajax_gc_get_fields_for_group', array( $this, 'gc_get_fields_for_group') );
-		add_action( 'wp_ajax_gc_get_fields', array( $this, 'gc_get_fields') );
 	}
 
 	/**
@@ -455,48 +453,6 @@ class Handlers extends Plugin_Base {
 	 */
 	public function verify_nonce( $nonce ) {
 		return wp_verify_nonce( $nonce, GATHERCONTENT_SLUG );
-	}
-
-	/**
-	 * Ajax search for field group.
-	 *
-	 * @since  3.0.0
-	 *
-	 * @param  array $group_key field group key.
-	 *
-	 * @return array               Array of results for select2 population.
-	 */
-	public function gc_get_fields_for_group() {
-
-	    $group_key = $_POST['group_key'];
-	    $fields = acf_get_fields($group_key);
-	    if ($fields === false) {
-	        error_log('Error retrieving ACF fields for group ' . $group_key);
-	        wp_send_json_error(); // Send an error response
-	    }
-	    echo json_encode($fields);
-	    wp_die();
-	}
-
-	/**
-	 * Ajax search for field group options.
-	 *
-	 * @since  3.0.0
-	 *
-	 * @param  array $field_parent field group key.
-	 *
-	 * @return array               Array of results for select2 population of field group options.
-	 */
-	public function gc_get_fields() {
-
-	    $field_parent = $_POST['field_parent'];
-	    $fields = acf_get_fields($field_parent);
-	    if ($fields === false) {
-	        error_log('Error retrieving ACF fields for group ' . $field_parent);
-	        wp_send_json_error(); // Send an error response
-	    }
-	    echo json_encode($fields);
-	    wp_die();
 	}
 
 }
