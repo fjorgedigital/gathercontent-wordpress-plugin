@@ -35,7 +35,6 @@ class ACF extends Base implements Type {
         $field_groups = acf_get_field_groups();
 
         foreach ( $field_groups as $group ) {
-            // print_r($group);
             $fields = get_posts(array(
                 'posts_per_page'   => -1,
                 'post_type'        => 'acf-field',
@@ -50,6 +49,7 @@ class ACF extends Base implements Type {
                 $options[$field->post_name] = $field->post_title;
             }
         }
+
     
         ?>
         <# if ( '<?php $this->e_type_id(); ?>' === data.field_type ) { #>
@@ -123,16 +123,50 @@ class ACF extends Base implements Type {
             $group_fields['group_' . $group_id] = $fields_array;
         }
         $data_results['field_groups'] = $group_fields;
- 
+
+
         // SAVED DATA
         $saved_data = array();
+        $mapped_post_type = '';
         $query = "SELECT post_content FROM wp_posts WHERE ID = $mapping_id LIMIT 1";
         $results = $wpdb->get_results($query);
         foreach($results[0] as $key => $value) {
             $temp_mapping = json_decode($value, JSON_PRETTY_PRINT);
+            $mapped_post_type = $temp_mapping['post_type'];
             $saved_data['mapping'] = $temp_mapping['mapping'];
         }
         $data_results['saved'] = $saved_data;
+
+
+        // UPDATE SAVED FIELD GROUPS
+        if($mapped_post_type) {
+            foreach($saved_data as $saved_group) {
+                foreach($saved_group as $data) {
+                    if($data['type'] == 'wp-type-acf') {
+                        $post_name = $data['value'];
+                        $group_query = "SELECT * FROM wp_posts WHERE post_name = '$post_name' LIMIT 1";
+                        $query_results = $wpdb->get_results($group_query);
+                        foreach($query_results as $post_data) {
+                            $post_id = $post_data->ID;
+                            $post_info = maybe_unserialize($post_data);
+                            $post_content_meta = maybe_unserialize($post_info->post_content);
+                            $post_type_data = array('param' => 'post_type', 'operator' => '==', 'value' => $mapped_post_type);
+                            if(!in_array($post_type_data,$post_content_meta['location'][0])) {
+                                array_push($post_content_meta['location'][0],$post_type_data);
+                                $updated_content = serialize($post_content_meta);
+                                $data = array(
+                                    'ID' => $post_id,
+                                    'post_content' => $updated_content,
+                                );
+                                wp_update_post( $data );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+
 
         // DATA LOADING
         $results = json_encode($data_results,JSON_PRETTY_PRINT);
