@@ -150,9 +150,9 @@ class ACF extends Base implements Type {
                             $post_id = $post_data->ID;
                             $post_info = maybe_unserialize($post_data);
                             $post_content_meta = maybe_unserialize($post_info->post_content);
-                            $post_type_data = array('param' => 'post_type', 'operator' => '==', 'value' => $mapped_post_type);
-                            if(!in_array($post_type_data,$post_content_meta['location'][0])) {
-                                array_push($post_content_meta['location'][0],$post_type_data);
+                            $post_type_data = array(array('param' => 'post_type', 'operator' => '==', 'value' => $mapped_post_type));
+                            if(!in_array($post_type_data,$post_content_meta['location'])) {
+                                array_push($post_content_meta['location'],$post_type_data);
                                 $updated_content = serialize($post_content_meta);
                                 $data = array(
                                     'ID' => $post_id,
