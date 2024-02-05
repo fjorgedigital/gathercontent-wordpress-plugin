@@ -133,6 +133,7 @@ class ACF extends Base implements Type {
             $saved_data['mapping'] = $temp_mapping['mapping'];
         }
         $data_results['saved'] = $saved_data;
+        print_r($saved_data);
 
         // DATA LOADING
         $results = json_encode($data_results,JSON_PRETTY_PRINT);
@@ -218,6 +219,7 @@ class ACF extends Base implements Type {
         // GROUP CHANGE
         function group_select() {
             $(document).on('change','.field-select-group',function() {
+                console.log('group select');
                 let select_id = $(this).attr('id');
                 get_group_fields(select_id);
                 component_init();
@@ -236,6 +238,7 @@ class ACF extends Base implements Type {
         // FIELD SELECT
         function fields_select() {
             $(document).on('change','.field-select',function() {
+                console.log('fields select');
                 let select_id = $(this).attr('id');
                 let action = 'change';
                 get_field_fields(select_id,action);
@@ -317,13 +320,13 @@ class ACF extends Base implements Type {
             let select_field = select_id;
             if(field_groups) {
                 let data_set = $('#' + select_id).attr('data-set');
+                let data_val = $('#' + select_id).val();
                 let group_id = '';
                 let child_options = $('#' + select_id).children('option');
                 $(child_options).each(function() {
                     let child_group = $(this).attr('data-group');
-                    let child_set = $(this).attr('data-set');
                     let child_id = $(this).attr('data-group-id');
-                    if(child_set == child_group) {
+                    if(data_val == child_group) {
                         group_id = child_id;
                     }
                 });
