@@ -144,7 +144,7 @@ class ACF extends Base implements Type {
             <select id="field-group-select-{{data.name}}" data-set="{{data.name}}" class="wp-type-value-select gc-select2 gc-select2-add-new field-select-group <?php $this->e_type_id(); ?>" name="<?php $view->output( 'option_base' ); ?>[mapping][{{ data.name }}][value]">
                 <option data-group="" data-set="" value="">Unused</option>
                  <# _.each( <?php echo json_encode($group_results); ?>, function( group ) { #>
-                    <option data-group="{{group.post_name}}" <# if ( group.ID == data.field_value ) { #> selected="selected"<# } #> data-set="{{data.field_value}}" value="{{ group.ID }}">{{ group.post_title }}</option>
+                    <option data-group="{{group.post_name}}" <# if ( group.post_name == data.field_value ) { #> selected="selected"<# } #> data-set="{{data.field_value}}" value="{{ group.post_name }}" data-group-id="{{ group.ID }}">{{ group.post_title }}</option>
                 <# }); #>
             </select>
             <span style="display: block; margin: 5px 0;"></span>
@@ -180,7 +180,7 @@ class ACF extends Base implements Type {
             load_functions();
         },200);
 
-        
+
         // LOAD FUNCTIONS
         function load_functions() {
             component_init();
@@ -255,7 +255,6 @@ class ACF extends Base implements Type {
                 saved_field = saved_fields[data_set]['field'];
                 saved_sub_fields = saved_fields[data_set]['sub_fields'];
             }
-            
 
             // FIELD OPTIONS
             let components = $('.acf-components[data-set="' + data_set + '"').children('select');
@@ -318,7 +317,16 @@ class ACF extends Base implements Type {
             let select_field = select_id;
             if(field_groups) {
                 let data_set = $('#' + select_id).attr('data-set');
-                let group_id = $('#' + select_id).val();
+                let group_id = '';
+                let child_options = $('#' + select_id).children('option');
+                $(child_options).each(function() {
+                    let child_group = $(this).attr('data-group');
+                    let child_set = $(this).attr('data-set');
+                    let child_id = $(this).attr('data-group-id');
+                    if(child_set == child_group) {
+                        group_id = child_id;
+                    }
+                });
                 let field_group = 'group_' + group_id;
                 let fields = field_groups[field_group];
                 let field_select = $('#field-select-' + data_set);
