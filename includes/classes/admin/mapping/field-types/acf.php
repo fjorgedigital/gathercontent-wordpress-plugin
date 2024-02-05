@@ -133,7 +133,6 @@ class ACF extends Base implements Type {
             $saved_data['mapping'] = $temp_mapping['mapping'];
         }
         $data_results['saved'] = $saved_data;
-        print_r($saved_data);
 
         // DATA LOADING
         $results = json_encode($data_results,JSON_PRETTY_PRINT);
@@ -219,7 +218,6 @@ class ACF extends Base implements Type {
         // GROUP CHANGE
         function group_select() {
             $(document).on('change','.field-select-group',function() {
-                console.log('group select');
                 let select_id = $(this).attr('id');
                 get_group_fields(select_id);
                 component_init();
@@ -238,7 +236,6 @@ class ACF extends Base implements Type {
         // FIELD SELECT
         function fields_select() {
             $(document).on('change','.field-select',function() {
-                console.log('fields select');
                 let select_id = $(this).attr('id');
                 let action = 'change';
                 get_field_fields(select_id,action);
