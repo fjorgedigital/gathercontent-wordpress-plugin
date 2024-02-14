@@ -420,6 +420,10 @@ class Pull extends Base {
 				case 'wp-type-media':
 					$post_data = $this->set_media_field_value( $destination['value'], $post_data );
 					break;
+
+				case 'wp-type-acf':
+					$post_data = $this->set_acf_field_value( $destination['value'], $post_data );
+					break;
 			}
 			// @codingStandardsIgnoreStart
 		} catch (\Exception $e) {
@@ -540,6 +544,112 @@ class Pull extends Base {
 		return $post_data;
 	}
 
+
+	/**
+	* Sets the ACF field value in the post data.
+	*
+	* @since 3.0.0
+	*
+	* @param  string $group_key  The ACF group key.
+	* @param  string $field_key  The ACF field key.
+	* @param  array  $post_data  The WP Post data array.
+	*
+	* @return array $post_data   The modified WP Post data array.
+	*/
+	
+	protected function set_acf_field_value( $post_id, $post_data ) {
+		// We are not sure of the incoming post_ID so let's get the current post ID
+		$post_id = $post_data['ID'];
+	
+		// Loop through the mapping data array
+		foreach ($this->mapping->data as $key => $value) {
+			// When it is a component, the key sandwiches '_component_' so let's get the key itself
+			$content_key = explode('_component_', $key)[0];
+	
+			// Check if the item has type wp-type-acf. We are assuming some items managed to skip the case check in the set_post_values function so we double check here.
+			if (isset($value['type']) && $value['type'] === 'wp-type-acf') {
+	
+				// Fetch the corresponding value from $this->item->content
+				$field_value = isset($this->item->content->{$content_key}) ? $this->item->content->{$content_key} : '';
+	
+				// Check if item has subfields. If it has then it is a component from GC
+				if (isset($value['sub_fields'])) {
+	
+					// Prepare the subfield data
+					$subfield_keys = array();
+					foreach ($value['sub_fields'] as $sub_field_key) {
+						array_push($subfield_keys, $sub_field_key);
+					}
+					
+					// Let ACF add fields before rows. This order does some wonders and we need to revisit it.
+					update_field($value['field'], $component_row_data, $post_id);
+					foreach ($field_value as $subfield){
+						$component_row_data = array_combine($subfield_keys, get_object_vars($subfield));
+						add_row($value['field'], $component_row_data, $post_id);
+						
+						// TODO: We need to handle subfields that are themselve arrays and objects like repeaters and images.
+						foreach ($subfield as $subsubfield){
+							if (is_array($subsubfield)){
+								// error_log(print_r($subsubfield, true));
+							}
+						}
+	
+					}
+					
+	
+				}else {
+					// If it's not a component, update the single ACF field normally
+					$field_data = array();
+					$fields_data = array();
+					if (is_array($field_value)) {
+						foreach ($field_value as $row_data) {
+							if (! is_object($row_data)){
+								array_push($field_data, $row_data);
+							}
+						}
+						array_push($fields_data, $field_data);
+					}
+	
+					$field_key = $value['field'];
+	
+					// Get information about the field
+					$field = get_field_object($field_key);
+	
+					// Let's hope the field exists and is really not a component
+					if ($field) {
+						if (!empty($field['sub_fields'])) {
+							$subsubfield_keys = array();
+							foreach ($field['sub_fields'] as $sub_field) {
+								array_push($subsubfield_keys, $sub_field['key']);
+							}
+						} else {
+							// Field does not have subfields. We can possibly add some error handling
+						}
+					} else {
+						// Field does not exist. We will decide what to do in that case later.
+					}
+	
+					// This part can get more interesting if someone setup ACF fields of different structure than the structure in GC and maps them. 
+					// This might be a secondary case to look at, so we are keeping things in arrays so we can later just improve on it to handle those wild cases.
+					
+					$key_value_mapping = [];
+					foreach ($fields_data[0] as $value) {
+						// Assign each value to a sub-array with the key from subsubfield_keys
+						$key_value_mapping[] = [$subsubfield_keys[0] => $value];
+					}
+					
+					foreach ($key_value_mapping as $key_value){
+						add_row($field_key, $key_value, $post_id);
+					}
+					update_field($field_key, $key_value_mapping, $post_id);
+					
+				}
+			}
+		}
+		return $post_data;
+	}
+
+	
 	/**
 	 * If field can append, then append the data, else set the data directly.
 	 *
