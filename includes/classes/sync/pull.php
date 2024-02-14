@@ -420,6 +420,10 @@ class Pull extends Base {
 				case 'wp-type-media':
 					$post_data = $this->set_media_field_value( $destination['value'], $post_data );
 					break;
+
+				case 'wp-type-acf':
+					$post_data = $this->set_acf_field_value( $destination['value'], $post_data );
+					break;
 			}
 			// @codingStandardsIgnoreStart
 		} catch (\Exception $e) {
