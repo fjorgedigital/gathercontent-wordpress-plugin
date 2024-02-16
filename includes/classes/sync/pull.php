@@ -565,13 +565,13 @@ class Pull extends Base {
 		foreach ($this->mapping->data as $key => $value) {
 			// When it is a component, the key sandwiches '_component_' so let's get the key itself
 			$content_key = explode('_component_', $key)[0];
-	
+
 			// Check if the item has type wp-type-acf. We are assuming some items managed to skip the case check in the set_post_values function so we double check here.
 			if (isset($value['type']) && $value['type'] === 'wp-type-acf') {
 	
 				// Fetch the corresponding value from $this->item->content
 				$field_value = isset($this->item->content->{$content_key}) ? $this->item->content->{$content_key} : '';
-	
+
 				// Check if item has subfields. If it has then it is a component from GC
 				if (isset($value['sub_fields'])) {
 	
@@ -583,14 +583,62 @@ class Pull extends Base {
 					
 					// Let ACF add fields before rows. This order does some wonders and we need to revisit it.
 					update_field($value['field'], $component_row_data, $post_id);
+
+					$row_index = 0;
+
 					foreach ($field_value as $subfield){
 						$component_row_data = array_combine($subfield_keys, get_object_vars($subfield));
 						add_row($value['field'], $component_row_data, $post_id);
-						
+
+						$subfield_key_id = -1;
+
+						$row_index ++;
+
 						// TODO: We need to handle subfields that are themselve arrays and objects like repeaters and images.
 						foreach ($subfield as $subsubfield){
+							
+							$subfield_key_id ++;
+							
 							if (is_array($subsubfield)){
-								// error_log(print_r($subsubfield, true));
+								$item_key = $subfield_keys[$subfield_key_id];
+								$item = get_field_object($item_key);
+								if ($item['parent']){
+									$parent_key = $item['parent'];
+								}
+								if($item['sub_fields']){
+									$children = array();
+									foreach ($item['sub_fields'] as $child){
+										array_push($children, $child['key']);
+									}
+								}
+								
+															
+								foreach ($subsubfield as $subsubfield_field){
+									if(empty($subsubfield_field)){
+										continue;
+									}
+									if (is_object($subsubfield_field)) {
+										// If the array contains objects then it might be an asset(image) from GC.
+										// We need to save it to WP and assign the ID to the postmeta
+
+										if (is_object($subsubfield_field)) {
+											// If the array contains objects then it might be an asset(image) from GC.
+											// We need to save it to WP and assign the ID to the postmeta
+										
+											
+										}
+										
+									}else{
+										// If the array containts non objects then it might be a repeatable Text Feild from GC.
+										// We need to loop through and add each as a row to the subfield.
+
+										foreach ($children as $child_key){
+										 // add_sub_row(['parent repeater', index, 'child repeater'], ['field_name' => $data], $post_id);
+											add_sub_row([$parent_key, $row_index, $item_key], [$child_key => $subsubfield_field], $post_id);
+										}
+										
+									}
+								}
 							}
 						}
 	
