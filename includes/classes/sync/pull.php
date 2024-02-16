@@ -614,9 +614,9 @@ class Pull extends Base {
 								
 															
 								foreach ($subsubfield as $subsubfield_field){
-									if(empty($subsubfield_field)){
-										continue;
-									}
+									// if(empty($subsubfield_field)){
+									// 	continue;
+									// }
 									if (is_object($subsubfield_field)) {
 										// If the array contains objects then it might be an asset(image) from GC.
 										// We need to save it to WP and assign the ID to the postmeta
