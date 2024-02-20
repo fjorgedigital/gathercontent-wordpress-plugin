@@ -235,7 +235,6 @@ class ACF extends Base implements Type {
             $(document).on('change','.type-select',function() {
                 console.log('gc_type_select');
                 gc_fields_select();
-                gc_component_init();
             })
         }
 
@@ -245,7 +244,6 @@ class ACF extends Base implements Type {
                 console.log('gc_group_select');
                 let select_id = $(this).attr('id');
                 get_group_fields(select_id);
-                gc_component_init();
             });
         }
 
