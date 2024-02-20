@@ -364,7 +364,7 @@ class Pull extends Base {
 					$metadata      = $field->metadata;
 					$is_component_repeatable = ( is_object( $metadata ) && isset( $metadata->repeatable ) ) ? $metadata->repeatable->isRepeatable : false;
 				}
-
+				
 				foreach ( $fields_data as $field_data ) {
 					$this->element = (object) $this->format_element_data( $field_data, $component_uuid, true, $is_component_repeatable);
 					$destination   = $this->mapping->data( $this->element->name );
@@ -422,7 +422,7 @@ class Pull extends Base {
 					break;
 
 				case 'wp-type-acf':
-					$post_data = $this->set_acf_field_value( $destination['value'], $post_data );
+					$post_data = $this->set_acf_field_value( $post_data );
 					break;
 			}
 			// @codingStandardsIgnoreStart
@@ -557,7 +557,7 @@ class Pull extends Base {
 	* @return array $post_data   The modified WP Post data array.
 	*/
 	
-	protected function set_acf_field_value( $post_id, $post_data ) {
+	protected function set_acf_field_value( $post_data ) {
 		// We are not sure of the incoming post_ID so let's get the current post ID
 		$post_id = $post_data['ID'];
 	
@@ -587,9 +587,11 @@ class Pull extends Base {
 					$row_index = 0;
 
 					foreach ($field_value as $subfield){
+
 						$component_row_data = array_combine($subfield_keys, get_object_vars($subfield));
 						add_row($value['field'], $component_row_data, $post_id);
 
+						
 						$subfield_key_id = -1;
 
 						$row_index ++;
@@ -611,32 +613,60 @@ class Pull extends Base {
 										array_push($children, $child['key']);
 									}
 								}
-								
-															
+						
 								foreach ($subsubfield as $subsubfield_field){
+									
 									// if(empty($subsubfield_field)){
 									// 	continue;
 									// }
-									if (is_object($subsubfield_field)) {
-										// If the array contains objects then it might be an asset(image) from GC.
-										// We need to save it to WP and assign the ID to the postmeta
+									
+									if ($item['type'] == 'image'){
+										$upload_dir = wp_upload_dir();
+										$image_url = $subsubfield_field->url;
+										$image_data = file_get_contents( $image_url );
+										$filename = $subsubfield_field->filename;
 
-										if (is_object($subsubfield_field)) {
-											// If the array contains objects then it might be an asset(image) from GC.
-											// We need to save it to WP and assign the ID to the postmeta
-										
+										if ( wp_mkdir_p( $upload_dir['path'] ) ) {
+											$file = $upload_dir['path'] . '/' . $filename;
+										}else {
+											$file = $upload_dir['basedir'] . '/' . $filename;
+										}
+
+										file_put_contents( $file, $image_data );
+
+										$wp_filetype = wp_check_filetype( $filename, null );
+
+										$attachment = array(
+											'post_mime_type' => $wp_filetype['type'],
+											'post_title' => sanitize_file_name( $filename ),
+											'post_content' => '',
+											'post_status' => 'inherit'
+										);
+
+										$attach_id = wp_insert_attachment( $attachment, $file );
+										require_once( ABSPATH . 'wp-admin/includes/image.php' );
+
+										// Check if the attachment insertion was successful
+										if (!is_wp_error($attach_id)) {
+											// Generate attachment metadata
+											$attach_data = wp_generate_attachment_metadata($attach_id, $file);
 											
+											// Update attachment metadata
+											wp_update_attachment_metadata($attach_id, $attach_data);
+				
+										} else {
+											// Log an error or handle the case where attachment insertion fails
 										}
 										
-									}else{
-										// If the array containts non objects then it might be a repeatable Text Feild from GC.
-										// We need to loop through and add each as a row to the subfield.
+										update_row($parent_key, $row_index, [$item_key => $attach_id],$post_id);
 
+									}
+
+									if ($item['type'] == 'repeater'){
 										foreach ($children as $child_key){
-										 // add_sub_row(['parent repeater', index, 'child repeater'], ['field_name' => $data], $post_id);
+											// add_sub_row(['parent repeater', index, 'child repeater'], ['field_name' => $data], $post_id);
 											add_sub_row([$parent_key, $row_index, $item_key], [$child_key => $subsubfield_field], $post_id);
 										}
-										
 									}
 								}
 							}
