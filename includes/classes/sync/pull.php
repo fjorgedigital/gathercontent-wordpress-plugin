@@ -365,15 +365,35 @@ class Pull extends Base {
 					$is_component_repeatable = ( is_object( $metadata ) && isset( $metadata->repeatable ) ) ? $metadata->repeatable->isRepeatable : false;
 				}
 				
-				foreach ( $fields_data as $field_data ) {
-					$this->element = (object) $this->format_element_data( $field_data, $component_uuid, true, $is_component_repeatable);
-					$destination   = $this->mapping->data( $this->element->name );
+				$componentProcessed = false; // Initialize flag outside the loop
 
-					if ( $destination && isset( $destination['type'], $destination['value'] ) ) {
-						$columns[ $destination['value'] ] = true;
-						$post_data                        = $this->set_post_values( $destination, $post_data );
+				foreach ($fields_data as $field_data) {
+					$this->element = (object) $this->format_element_data($field_data, $component_uuid, true, $is_component_repeatable);
+					$uuid = $this->element->name;
+
+					// Check if "_component_" exists in the string and if it has not been processed yet
+					if (strpos($uuid, "_component_") !== false && !$componentProcessed) {
+						// Split the string by "_component_"
+						$parts = explode("_component_", $uuid);
+
+						// Get the last part
+						$uuid = end($parts);
+
+						// Concatenate the last part with the prefix "_component_"
+						$uuid = $uuid . "_component_" . $uuid;
+
+						// Set the flag to true to indicate that "_component_" UUID has been processed
+						$componentProcessed = true;
+					}
+
+					// Further processing with the UUID
+					$destination = $this->mapping->data($uuid);
+					if ($destination && isset($destination['type'], $destination['value'])) {
+						$columns[$destination['value']] = true;
+						$post_data = $this->set_post_values($destination, $post_data);
 					}
 				}
+
 			}
 		}
 
@@ -401,7 +421,6 @@ class Pull extends Base {
 	protected function set_post_values( $destination, $post_data ) {
 
 		$this->set_element_value();
-
 		try {
 			switch ( $destination['type'] ) {
 
@@ -585,10 +604,17 @@ class Pull extends Base {
 					update_field($value['field'], $component_row_data, $post_id);
 
 					$row_index = 0;
-
+					
 					foreach ($field_value as $subfield){
-
-						$component_row_data = array_combine($subfield_keys, get_object_vars($subfield));
+						// Check if the number of elements in $keys and $values match
+						if (count($subfield_keys) === count(get_object_vars($subfield))) {
+							// Combine the arrays if the counts match
+							$component_row_data = array_combine($subfield_keys, get_object_vars($subfield));
+						} else {
+							// error_log("Number of keys and values don't match for array_combine()");
+							// Skip the current iteration if component_row_data is not available
+							continue;
+						}
 						add_row($value['field'], $component_row_data, $post_id);
 
 						
@@ -596,7 +622,6 @@ class Pull extends Base {
 
 						$row_index ++;
 
-						// TODO: We need to handle subfields that are themselve arrays and objects like repeaters and images.
 						foreach ($subfield as $subsubfield){
 							
 							$subfield_key_id ++;
