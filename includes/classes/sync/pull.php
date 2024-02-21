@@ -364,16 +364,36 @@ class Pull extends Base {
 					$metadata      = $field->metadata;
 					$is_component_repeatable = ( is_object( $metadata ) && isset( $metadata->repeatable ) ) ? $metadata->repeatable->isRepeatable : false;
 				}
+				
+				$componentProcessed = false; // Initialize flag outside the loop
 
-				foreach ( $fields_data as $field_data ) {
-					$this->element = (object) $this->format_element_data( $field_data, $component_uuid, true, $is_component_repeatable);
-					$destination   = $this->mapping->data( $this->element->name );
+				foreach ($fields_data as $field_data) {
+					$this->element = (object) $this->format_element_data($field_data, $component_uuid, true, $is_component_repeatable);
+					$uuid = $this->element->name;
 
-					if ( $destination && isset( $destination['type'], $destination['value'] ) ) {
-						$columns[ $destination['value'] ] = true;
-						$post_data                        = $this->set_post_values( $destination, $post_data );
+					// Check if "_component_" exists in the string and if it has not been processed yet
+					if (strpos($uuid, "_component_") !== false && !$componentProcessed) {
+						// Split the string by "_component_"
+						$parts = explode("_component_", $uuid);
+
+						// Get the last part
+						$uuid = end($parts);
+
+						// Concatenate the last part with the prefix "_component_"
+						$uuid = $uuid . "_component_" . $uuid;
+
+						// Set the flag to true to indicate that "_component_" UUID has been processed
+						$componentProcessed = true;
+					}
+
+					// Further processing with the UUID
+					$destination = $this->mapping->data($uuid);
+					if ($destination && isset($destination['type'], $destination['value'])) {
+						$columns[$destination['value']] = true;
+						$post_data = $this->set_post_values($destination, $post_data);
 					}
 				}
+
 			}
 		}
 
@@ -401,7 +421,6 @@ class Pull extends Base {
 	protected function set_post_values( $destination, $post_data ) {
 
 		$this->set_element_value();
-
 		try {
 			switch ( $destination['type'] ) {
 
@@ -422,7 +441,7 @@ class Pull extends Base {
 					break;
 
 				case 'wp-type-acf':
-					$post_data = $this->set_acf_field_value( $destination['value'], $post_data );
+					$post_data = $this->set_acf_field_value( $post_data );
 					break;
 			}
 			// @codingStandardsIgnoreStart
@@ -557,7 +576,7 @@ class Pull extends Base {
 	* @return array $post_data   The modified WP Post data array.
 	*/
 	
-	protected function set_acf_field_value( $post_id, $post_data ) {
+	protected function set_acf_field_value( $post_data ) {
 		// We are not sure of the incoming post_ID so let's get the current post ID
 		$post_id = $post_data['ID'];
 	
@@ -585,16 +604,24 @@ class Pull extends Base {
 					update_field($value['field'], $component_row_data, $post_id);
 
 					$row_index = 0;
-
+					
 					foreach ($field_value as $subfield){
-						$component_row_data = array_combine($subfield_keys, get_object_vars($subfield));
+						// Check if the number of elements in $keys and $values match
+						if (count($subfield_keys) === count(get_object_vars($subfield))) {
+							// Combine the arrays if the counts match
+							$component_row_data = array_combine($subfield_keys, get_object_vars($subfield));
+						} else {
+							// error_log("Number of keys and values don't match for array_combine()");
+							// Skip the current iteration if component_row_data is not available
+							continue;
+						}
 						add_row($value['field'], $component_row_data, $post_id);
 
+						
 						$subfield_key_id = -1;
 
 						$row_index ++;
 
-						// TODO: We need to handle subfields that are themselve arrays and objects like repeaters and images.
 						foreach ($subfield as $subsubfield){
 							
 							$subfield_key_id ++;
@@ -611,32 +638,60 @@ class Pull extends Base {
 										array_push($children, $child['key']);
 									}
 								}
-								
-															
+						
 								foreach ($subsubfield as $subsubfield_field){
+									
 									// if(empty($subsubfield_field)){
 									// 	continue;
 									// }
-									if (is_object($subsubfield_field)) {
-										// If the array contains objects then it might be an asset(image) from GC.
-										// We need to save it to WP and assign the ID to the postmeta
+									
+									if ($item['type'] == 'image'){
+										$upload_dir = wp_upload_dir();
+										$image_url = $subsubfield_field->url;
+										$image_data = file_get_contents( $image_url );
+										$filename = $subsubfield_field->filename;
 
-										if (is_object($subsubfield_field)) {
-											// If the array contains objects then it might be an asset(image) from GC.
-											// We need to save it to WP and assign the ID to the postmeta
-										
+										if ( wp_mkdir_p( $upload_dir['path'] ) ) {
+											$file = $upload_dir['path'] . '/' . $filename;
+										}else {
+											$file = $upload_dir['basedir'] . '/' . $filename;
+										}
+
+										file_put_contents( $file, $image_data );
+
+										$wp_filetype = wp_check_filetype( $filename, null );
+
+										$attachment = array(
+											'post_mime_type' => $wp_filetype['type'],
+											'post_title' => sanitize_file_name( $filename ),
+											'post_content' => '',
+											'post_status' => 'inherit'
+										);
+
+										$attach_id = wp_insert_attachment( $attachment, $file );
+										require_once( ABSPATH . 'wp-admin/includes/image.php' );
+
+										// Check if the attachment insertion was successful
+										if (!is_wp_error($attach_id)) {
+											// Generate attachment metadata
+											$attach_data = wp_generate_attachment_metadata($attach_id, $file);
 											
+											// Update attachment metadata
+											wp_update_attachment_metadata($attach_id, $attach_data);
+				
+										} else {
+											// Log an error or handle the case where attachment insertion fails
 										}
 										
-									}else{
-										// If the array containts non objects then it might be a repeatable Text Feild from GC.
-										// We need to loop through and add each as a row to the subfield.
+										update_row($parent_key, $row_index, [$item_key => $attach_id],$post_id);
 
+									}
+
+									if ($item['type'] == 'repeater'){
 										foreach ($children as $child_key){
-										 // add_sub_row(['parent repeater', index, 'child repeater'], ['field_name' => $data], $post_id);
+											// add_sub_row(['parent repeater', index, 'child repeater'], ['field_name' => $data], $post_id);
 											add_sub_row([$parent_key, $row_index, $item_key], [$child_key => $subsubfield_field], $post_id);
 										}
-										
 									}
 								}
 							}
