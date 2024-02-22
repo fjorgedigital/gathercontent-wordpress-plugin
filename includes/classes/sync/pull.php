@@ -364,16 +364,36 @@ class Pull extends Base {
 					$metadata      = $field->metadata;
 					$is_component_repeatable = ( is_object( $metadata ) && isset( $metadata->repeatable ) ) ? $metadata->repeatable->isRepeatable : false;
 				}
+				
+				$componentProcessed = false; // Initialize flag outside the loop
 
-				foreach ( $fields_data as $field_data ) {
-					$this->element = (object) $this->format_element_data( $field_data, $component_uuid, true, $is_component_repeatable);
-					$destination   = $this->mapping->data( $this->element->name );
+				foreach ($fields_data as $field_data) {
+					$this->element = (object) $this->format_element_data($field_data, $component_uuid, true, $is_component_repeatable);
+					$uuid = $this->element->name;
 
-					if ( $destination && isset( $destination['type'], $destination['value'] ) ) {
-						$columns[ $destination['value'] ] = true;
-						$post_data                        = $this->set_post_values( $destination, $post_data );
+					// Check if "_component_" exists in the string and if it has not been processed yet
+					if (strpos($uuid, "_component_") !== false && !$componentProcessed) {
+						// Split the string by "_component_"
+						$parts = explode("_component_", $uuid);
+
+						// Get the last part
+						$uuid = end($parts);
+
+						// Concatenate the last part with the prefix "_component_"
+						$uuid = $uuid . "_component_" . $uuid;
+
+						// Set the flag to true to indicate that "_component_" UUID has been processed
+						$componentProcessed = true;
+					}
+
+					// Further processing with the UUID
+					$destination = $this->mapping->data($uuid);
+					if ($destination && isset($destination['type'], $destination['value'])) {
+						$columns[$destination['value']] = true;
+						$post_data = $this->set_post_values($destination, $post_data);
 					}
 				}
+
 			}
 		}
 
@@ -401,7 +421,6 @@ class Pull extends Base {
 	protected function set_post_values( $destination, $post_data ) {
 
 		$this->set_element_value();
-
 		try {
 			switch ( $destination['type'] ) {
 
@@ -419,6 +438,10 @@ class Pull extends Base {
 
 				case 'wp-type-media':
 					$post_data = $this->set_media_field_value( $destination['value'], $post_data );
+					break;
+
+				case 'wp-type-acf':
+					$post_data = $this->set_acf_field_value( $post_data );
 					break;
 			}
 			// @codingStandardsIgnoreStart
@@ -540,6 +563,196 @@ class Pull extends Base {
 		return $post_data;
 	}
 
+
+	/**
+	* Sets the ACF field value in the post data.
+	*
+	* @since 3.0.0
+	*
+	* @param  string $group_key  The ACF group key.
+	* @param  string $field_key  The ACF field key.
+	* @param  array  $post_data  The WP Post data array.
+	*
+	* @return array $post_data   The modified WP Post data array.
+	*/
+	
+	protected function set_acf_field_value( $post_data ) {
+		// We are not sure of the incoming post_ID so let's get the current post ID
+		$post_id = $post_data['ID'];
+	
+		// Loop through the mapping data array
+		foreach ($this->mapping->data as $key => $value) {
+			// When it is a component, the key sandwiches '_component_' so let's get the key itself
+			$content_key = explode('_component_', $key)[0];
+
+			// Check if the item has type wp-type-acf. We are assuming some items managed to skip the case check in the set_post_values function so we double check here.
+			if (isset($value['type']) && $value['type'] === 'wp-type-acf') {
+	
+				// Fetch the corresponding value from $this->item->content
+				$field_value = isset($this->item->content->{$content_key}) ? $this->item->content->{$content_key} : '';
+
+				// Check if item has subfields. If it has then it is a component from GC
+				if (isset($value['sub_fields'])) {
+	
+					// Prepare the subfield data
+					$subfield_keys = array();
+					foreach ($value['sub_fields'] as $sub_field_key) {
+						array_push($subfield_keys, $sub_field_key);
+					}
+					
+					// Let ACF add fields before rows. This order does some wonders and we need to revisit it.
+					update_field($value['field'], $component_row_data, $post_id);
+
+					$row_index = 0;
+					
+					foreach ($field_value as $subfield){
+						// Check if the number of elements in $keys and $values match
+						if (count($subfield_keys) === count(get_object_vars($subfield))) {
+							// Combine the arrays if the counts match
+							$component_row_data = array_combine($subfield_keys, get_object_vars($subfield));
+						} else {
+							// error_log("Number of keys and values don't match for array_combine()");
+							// Skip the current iteration if component_row_data is not available
+							continue;
+						}
+						add_row($value['field'], $component_row_data, $post_id);
+
+						
+						$subfield_key_id = -1;
+
+						$row_index ++;
+
+						foreach ($subfield as $subsubfield){
+							
+							$subfield_key_id ++;
+							
+							if (is_array($subsubfield)){
+								$item_key = $subfield_keys[$subfield_key_id];
+								$item = get_field_object($item_key);
+								if ($item['parent']){
+									$parent_key = $item['parent'];
+								}
+								if($item['sub_fields']){
+									$children = array();
+									foreach ($item['sub_fields'] as $child){
+										array_push($children, $child['key']);
+									}
+								}
+						
+								foreach ($subsubfield as $subsubfield_field){
+									
+									// if(empty($subsubfield_field)){
+									// 	continue;
+									// }
+									
+									if ($item['type'] == 'image'){
+										$upload_dir = wp_upload_dir();
+										$image_url = $subsubfield_field->url;
+										$image_data = file_get_contents( $image_url );
+										$filename = $subsubfield_field->filename;
+
+										if ( wp_mkdir_p( $upload_dir['path'] ) ) {
+											$file = $upload_dir['path'] . '/' . $filename;
+										}else {
+											$file = $upload_dir['basedir'] . '/' . $filename;
+										}
+
+										file_put_contents( $file, $image_data );
+
+										$wp_filetype = wp_check_filetype( $filename, null );
+
+										$attachment = array(
+											'post_mime_type' => $wp_filetype['type'],
+											'post_title' => sanitize_file_name( $filename ),
+											'post_content' => '',
+											'post_status' => 'inherit'
+										);
+
+										$attach_id = wp_insert_attachment( $attachment, $file );
+										require_once( ABSPATH . 'wp-admin/includes/image.php' );
+
+										// Check if the attachment insertion was successful
+										if (!is_wp_error($attach_id)) {
+											// Generate attachment metadata
+											$attach_data = wp_generate_attachment_metadata($attach_id, $file);
+											
+											// Update attachment metadata
+											wp_update_attachment_metadata($attach_id, $attach_data);
+				
+										} else {
+											// Log an error or handle the case where attachment insertion fails
+										}
+										
+										update_row($parent_key, $row_index, [$item_key => $attach_id],$post_id);
+
+									}
+
+									if ($item['type'] == 'repeater'){
+										foreach ($children as $child_key){
+											// add_sub_row(['parent repeater', index, 'child repeater'], ['field_name' => $data], $post_id);
+											add_sub_row([$parent_key, $row_index, $item_key], [$child_key => $subsubfield_field], $post_id);
+										}
+									}
+								}
+							}
+						}
+	
+					}
+					
+	
+				}else {
+					// If it's not a component, update the single ACF field normally
+					$field_data = array();
+					$fields_data = array();
+					if (is_array($field_value)) {
+						foreach ($field_value as $row_data) {
+							if (! is_object($row_data)){
+								array_push($field_data, $row_data);
+							}
+						}
+						array_push($fields_data, $field_data);
+					}
+	
+					$field_key = $value['field'];
+	
+					// Get information about the field
+					$field = get_field_object($field_key);
+	
+					// Let's hope the field exists and is really not a component
+					if ($field) {
+						if (!empty($field['sub_fields'])) {
+							$subsubfield_keys = array();
+							foreach ($field['sub_fields'] as $sub_field) {
+								array_push($subsubfield_keys, $sub_field['key']);
+							}
+						} else {
+							// Field does not have subfields. We can possibly add some error handling
+						}
+					} else {
+						// Field does not exist. We will decide what to do in that case later.
+					}
+	
+					// This part can get more interesting if someone setup ACF fields of different structure than the structure in GC and maps them. 
+					// This might be a secondary case to look at, so we are keeping things in arrays so we can later just improve on it to handle those wild cases.
+					
+					$key_value_mapping = [];
+					foreach ($fields_data[0] as $value) {
+						// Assign each value to a sub-array with the key from subsubfield_keys
+						$key_value_mapping[] = [$subsubfield_keys[0] => $value];
+					}
+					
+					foreach ($key_value_mapping as $key_value){
+						add_row($field_key, $key_value, $post_id);
+					}
+					update_field($field_key, $key_value_mapping, $post_id);
+					
+				}
+			}
+		}
+		return $post_data;
+	}
+
+	
 	/**
 	 * If field can append, then append the data, else set the data directly.
 	 *
