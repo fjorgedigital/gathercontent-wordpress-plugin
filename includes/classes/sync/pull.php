@@ -608,7 +608,14 @@ class Pull extends Base {
 					foreach ($field_value as $subfield){
 						
 						$row_index ++;
-						
+						if (!is_object($subfield)) {
+							// When components are not set to be repeatable in GC we may end up getting non objects subfields.
+							// Non objects like strings will fail for get_object_vars which expects objects
+							// In such a situation the page breaks since the upload import can't be completed
+							// We want to prevent the page break by just skipping import for such cases for now to give a better user experience
+							// TODO: If it allowed that components can be non repeatable then we will need to handle the string case, else components always needs to be set repeatable even if it is going to be just one.
+							continue;
+						}
 						// Check if the number of elements in $keys and $values match
 						if (count($subfield_keys) === count(get_object_vars($subfield))) {
 							// Combine the arrays if the counts match
