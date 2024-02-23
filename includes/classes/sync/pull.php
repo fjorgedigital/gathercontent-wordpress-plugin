@@ -590,7 +590,7 @@ class Pull extends Base {
 	
 				// Fetch the corresponding value from $this->item->content
 				$field_value = isset($this->item->content->{$content_key}) ? $this->item->content->{$content_key} : '';
-
+				
 				// Check if item has subfields. If it has then it is a component from GC
 				if (isset($value['sub_fields'])) {
 	
@@ -606,6 +606,9 @@ class Pull extends Base {
 					$row_index = 0;
 					
 					foreach ($field_value as $subfield){
+						
+						$row_index ++;
+						
 						// Check if the number of elements in $keys and $values match
 						if (count($subfield_keys) === count(get_object_vars($subfield))) {
 							// Combine the arrays if the counts match
@@ -620,15 +623,15 @@ class Pull extends Base {
 						
 						$subfield_key_id = -1;
 
-						$row_index ++;
-
 						foreach ($subfield as $subsubfield){
 							
 							$subfield_key_id ++;
 							
 							if (is_array($subsubfield)){
+								
 								$item_key = $subfield_keys[$subfield_key_id];
 								$item = get_field_object($item_key);
+								
 								if ($item['parent']){
 									$parent_key = $item['parent'];
 								}
@@ -638,54 +641,62 @@ class Pull extends Base {
 										array_push($children, $child['key']);
 									}
 								}
-						
+
 								foreach ($subsubfield as $subsubfield_field){
-									
-									// if(empty($subsubfield_field)){
-									// 	continue;
-									// }
 									
 									if ($item['type'] == 'image'){
 										$upload_dir = wp_upload_dir();
 										$image_url = $subsubfield_field->url;
 										$image_data = file_get_contents( $image_url );
 										$filename = $subsubfield_field->filename;
-
-										if ( wp_mkdir_p( $upload_dir['path'] ) ) {
-											$file = $upload_dir['path'] . '/' . $filename;
-										}else {
-											$file = $upload_dir['basedir'] . '/' . $filename;
-										}
-
-										file_put_contents( $file, $image_data );
-
-										$wp_filetype = wp_check_filetype( $filename, null );
-
-										$attachment = array(
-											'post_mime_type' => $wp_filetype['type'],
-											'post_title' => sanitize_file_name( $filename ),
-											'post_content' => '',
-											'post_status' => 'inherit'
-										);
-
-										$attach_id = wp_insert_attachment( $attachment, $file );
-										require_once( ABSPATH . 'wp-admin/includes/image.php' );
-
-										// Check if the attachment insertion was successful
-										if (!is_wp_error($attach_id)) {
-											// Generate attachment metadata
-											$attach_data = wp_generate_attachment_metadata($attach_id, $file);
-											
-											// Update attachment metadata
-											wp_update_attachment_metadata($attach_id, $attach_data);
-				
+									
+										// Check if the attachment already exists
+										global $wpdb;
+										$existing_attachment_id = $wpdb->get_var( $wpdb->prepare(
+											"SELECT ID FROM $wpdb->posts WHERE post_type = 'attachment' AND post_title = %s",
+											sanitize_file_name( $filename )
+										) );
+									
+										if ( $existing_attachment_id ) {
+											// If the attachment already exists, use its ID
+											$attach_id = $existing_attachment_id;
 										} else {
-											// Log an error or handle the case where attachment insertion fails
+											if ( wp_mkdir_p( $upload_dir['path'] ) ) {
+												$file = $upload_dir['path'] . '/' . $filename;
+											} else {
+												$file = $upload_dir['basedir'] . '/' . $filename;
+											}
+									
+											file_put_contents( $file, $image_data );
+									
+											$wp_filetype = wp_check_filetype( $filename, null );
+									
+											$attachment = array(
+												'post_mime_type' => $wp_filetype['type'],
+												'post_title' => sanitize_file_name( $filename ),
+												'post_content' => '',
+												'post_status' => 'inherit'
+											);
+									
+											$attach_id = wp_insert_attachment( $attachment, $file );
+											require_once( ABSPATH . 'wp-admin/includes/image.php' );
+									
+											// Check if the attachment insertion was successful
+											if (!is_wp_error($attach_id)) {
+												// Generate attachment metadata
+												$attach_data = wp_generate_attachment_metadata($attach_id, $file);
+									
+												// Update attachment metadata
+												wp_update_attachment_metadata($attach_id, $attach_data);
+									
+											} else {
+												// Log an error or handle the case where attachment insertion fails
+											}
 										}
 										
 										update_row($parent_key, $row_index, [$item_key => $attach_id],$post_id);
-
 									}
+									
 
 									if ($item['type'] == 'repeater'){
 										foreach ($children as $child_key){
