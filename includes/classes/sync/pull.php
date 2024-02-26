@@ -657,6 +657,7 @@ class Pull extends Base {
 								}
 
 								foreach ($subsubfield as $subsubfield_field){
+									
 									if ($item['type'] == 'image'){
 										$upload_dir = wp_upload_dir();
 										$image_url = $subsubfield_field->url;
@@ -708,10 +709,12 @@ class Pull extends Base {
 										}
 										
 										update_row($parent_key, $row_index, [$item_key => $attach_id],$post_id);
+										// Break out of the loop after processing the first image
+        								break;
 									}
 									
 
-									if ($item['type'] == 'repeater'){
+									if ($item['type'] === 'repeater'){
 										foreach ($children as $child_key){
 											// add_sub_row(['parent repeater', index, 'child repeater'], ['field_name' => $data], $post_id);
 											add_sub_row([$parent_key, $row_index, $item_key], [$child_key => $subsubfield_field], $post_id);
@@ -962,6 +965,7 @@ class Pull extends Base {
 				if ( self::attachment_is_image( $attach_id ) ) {
 					if ( 'featured_image' === $attachment['destination'] ) {
 						$featured_img_id = $attach_id;
+						break;
 					} elseif ( in_array( $attachment['destination'], array( 'content_image', 'excerpt_image' ), true ) ) {
 						$field = 'excerpt_image' === $attachment['destination'] ? 'post_excerpt' : 'post_content';
 
