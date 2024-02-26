@@ -587,10 +587,10 @@ class Pull extends Base {
 
 			// Check if the item has type wp-type-acf. We are assuming some items managed to skip the case check in the set_post_values function so we double check here.
 			if (isset($value['type']) && $value['type'] === 'wp-type-acf') {
-	
+				
 				// Fetch the corresponding value from $this->item->content
 				$field_value = isset($this->item->content->{$content_key}) ? $this->item->content->{$content_key} : '';
-				
+
 				// Check if item has subfields. If it has then it is a component from GC
 				if (isset($value['sub_fields'])) {
 	
@@ -599,12 +599,11 @@ class Pull extends Base {
 					foreach ($value['sub_fields'] as $sub_field_key) {
 						array_push($subfield_keys, $sub_field_key);
 					}
-					
 					// Let ACF add fields before rows. This order does some wonders and we need to revisit it.
 					update_field($value['field'], $component_row_data, $post_id);
 
 					$row_index = 0;
-					
+
 					foreach ($field_value as $subfield){
 						
 						$row_index ++;
@@ -625,20 +624,20 @@ class Pull extends Base {
 							// Skip the current iteration if component_row_data is not available
 							continue;
 						}
+						// Convert object to associative array
+						$component_row_data = json_decode(json_encode($component_row_data), true);
+
 						add_row($value['field'], $component_row_data, $post_id);
 
 						
 						$subfield_key_id = -1;
 
-						foreach ($subfield as $subsubfield){
-							
+						foreach ($subfield as $key => $subsubfield){
 							$subfield_key_id ++;
 							
 							if (is_array($subsubfield)){
-								
 								$item_key = $subfield_keys[$subfield_key_id];
 								$item = get_field_object($item_key);
-								
 								if ($item['parent']){
 									$parent_key = $item['parent'];
 								}
@@ -649,9 +648,17 @@ class Pull extends Base {
 									}
 								}
 
+								if ($item['type'] && ($item['type'] === 'checkbox')){
+									$checkbox_labels = [];
+									// Extract labels from each stdClass object and add them to the $labels array for checkboxes
+									foreach ($subsubfield as $checkbox) {
+										$checkbox_labels[] = $checkbox->label;
+									}
+								}
+
 								foreach ($subsubfield as $subsubfield_field){
 									
-									if ($item['type'] === 'image'){
+									if ($item['type'] == 'image'){
 										$upload_dir = wp_upload_dir();
 										$image_url = $subsubfield_field->url;
 										$image_data = file_get_contents( $image_url );
@@ -712,6 +719,15 @@ class Pull extends Base {
 											// add_sub_row(['parent repeater', index, 'child repeater'], ['field_name' => $data], $post_id);
 											add_sub_row([$parent_key, $row_index, $item_key], [$child_key => $subsubfield_field], $post_id);
 										}
+									}
+
+									if ($item['type'] === 'checkbox'){										
+										update_row($parent_key, $row_index, [$item_key => $checkbox_labels],$post_id);
+									}
+
+									if ($item['type'] === 'radio'){
+										update_row($parent_key, $row_index, [$item_key => $subsubfield_field->label],$post_id);
+
 									}
 								}
 							}
