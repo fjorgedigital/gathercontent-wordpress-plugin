@@ -121,6 +121,7 @@ class Push extends Base {
 		$this->set_item( \GatherContent\Importer\get_post_item_id( $this->post->ID ), true );
 
 		$config_update = $this->map_wp_data_to_gc_data();
+		// error_log(print_r($config_update, true));
 
 		// No updated data, so bail.
 		if ( empty( $config_update ) ) {
@@ -152,19 +153,25 @@ class Push extends Base {
 	 * @return mixed Result of push.
 	 */
 	public function maybe_do_item_update( $update ) {
-
-		// Get our initial config reference.
+		// error_log(print_r($update, true));
+		// Get our initial croonfig reference.
 		$config = json_decode( $this->config );
 
 		// And update the content with the new values.
 		foreach ( $update as $updated_element ) {
+			// error_log(print_r($updated_element, true));
 			$element_id = $updated_element->name;
 
 			// handle repeatable elements because we stored them in JSON format earlier and GC requires it in array format
 			if ( $updated_element->repeatable ) {
 
-				$repeatable_value = ! empty( $updated_element->value ) ? @json_decode( $updated_element->value, true ) : $updated_element->value;
-
+				// $repeatable_value = ! empty( $updated_element->value ) ? @json_decode( $updated_element->value, true ) : $updated_element->value;
+				if (is_string($updated_element->value)) {
+					$repeatable_value = !empty( $updated_element->value ) ? json_decode( $updated_element->value, true) : $updated_element->value;
+				} else {
+					// Handle the case where $updated_element->value is already an array
+					$repeatable_value = $updated_element->value;
+				}
 				if ( is_array( $repeatable_value ) ) {
 					$updated_element->value = $repeatable_value;
 				} else {
@@ -276,6 +283,7 @@ class Push extends Base {
 	 */
 	protected function map_wp_data_to_gc_data() {
 		$config = $this->loop_item_elements_and_map();
+		// error_log(print_r($this, true));
 		return apply_filters( 'gc_update_gc_config_data', $config, $this );
 	}
 
@@ -287,15 +295,14 @@ class Push extends Base {
 	 * @return array Modified item config array on success.
 	 */
 	public function loop_item_elements_and_map() {
-
 		if ( empty( $this->item_config ) ) {
 			return false;
 		}
 
 		$structure_groups = isset( $this->item_config->related ) ? $this->item_config->related->structure->groups : $this->item_config->structure->groups;
-
+		
 		$this->item_config = array();
-
+		
 		if ( ! isset( $structure_groups ) || empty( $structure_groups ) ) {
 			return false;
 		}
@@ -305,31 +312,48 @@ class Push extends Base {
 			if ( ! isset( $tab->fields ) || ! $tab->fields ) {
 				continue;
 			}
-
+			
 			// to handle fields in a tab
 			foreach ( $tab->fields as $element_index => $field ) {
 
 				// to handle components with multiple fields inside
 				$fields_data    = $field->component->fields ?? array( $field );
 				$component_uuid = 'component' === $field->field_type ? $field->uuid : '';
-
+				
 				$is_component_repeatable = false;
 				if($component_uuid) {
 					$metadata      = $field->metadata;
 					$is_component_repeatable = ( is_object( $metadata ) && isset( $metadata->repeatable ) ) ? $metadata->repeatable->isRepeatable : false;
 				}
-
+				error_log(print_r($fields_data, true));
+				$componentProcessed = false;
 				foreach ( $fields_data as $field_data ) {
 
 					$this->element = (object) $this->format_element_data( $field_data, $component_uuid, false, $is_component_repeatable );
-
+					
 					if ( $component_uuid ) {
 						$this->element->component_uuid = $component_uuid;
 					}
-
-					$source      = $this->mapping->data( $this->element->name . ( $component_uuid ? '_component_' . $component_uuid : '' ) );
+					// error_log(print_r($field_data, true));
+					$uuid = $this->element->name;
+					if ( $component_uuid && !$componentProcessed) {
+						$this->element->component_uuid = $component_uuid;
+						$uuid = $component_uuid . '_component_' . $component_uuid;
+						$componentProcessed = true;
+					}
+					// error_log(print_r($this->item_config, true));
+					$source      = $this->mapping->data( $uuid );
 					$source_type = isset( $source['type'] ) ? $source['type'] : '';
-					$source_key  = isset( $source['value'] ) ? $source['value'] : '';
+					
+					// Check if $source['field'] exists, then use it as the key
+					if (isset($source['field'])) {
+						// not sure if the field can be empty, will need to check that later on
+						$source_key = $source['field'];
+					} else {
+						// If $source['field'] doesn't exist, fall back to using $source['value']
+						$source_key = isset($source['value']) ? $source['value'] : '';
+					}
+
 
 					if ( $source_type ) {
 						if ( ! isset( $this->done[ $source_type ] ) ) {
@@ -342,20 +366,21 @@ class Push extends Base {
 
 						$this->done[ $source_type ][ $source_key ][ $index . ':' . $element_index ] = (array) $this->element;
 					}
-
+					
 					if (
 						$source
 						&& isset( $source['type'], $source['value'] )
 						&& $this->set_values_from_wp( $source_type, $source_key )
 					) {
 						$this->item_config[] = $this->element;
+						// error_log(print_r($source, true));
 					}
 				}
 			}
 		}
-
+		error_log(print_r($this->item_config, true));////
 		$this->remove_unknowns();
-
+		
 		return $this->item_config;
 	}
 
@@ -411,7 +436,7 @@ class Push extends Base {
 	 */
 	protected function set_values_from_wp( $source_type, $source_key ) {
 		$updated = false;
-
+		// error_log("*****Source Type: $source_type ******** Source Key: $source_key *****");
 		switch ( $source_type ) {
 			case 'wp-type-post':
 				$updated = $this->set_post_field_value( $source_key );
@@ -427,6 +452,10 @@ class Push extends Base {
 
 			case 'wp-type-media':
 				$this->set_featured_image_alt( $source_key );
+				break;
+
+			case 'wp-type-acf':
+				$updated = $this->set_acf_field_value( $source_key );
 				break;
 
 		}
@@ -504,8 +533,8 @@ class Push extends Base {
 	 */
 	protected function set_post_field_value( $post_column ) {
 		$updated  = false;
-		$el_value = $this->element->value;
-
+		$el_value = $this->element->value; 
+		// error_log(print_r($this, true));
 		$value = ! empty( $this->post->{$post_column} ) ? self::remove_zero_width( $this->post->{$post_column} ) : false;
 		$value = apply_filters( "gc_get_{$post_column}", $value, $this );
 
@@ -528,7 +557,6 @@ class Push extends Base {
 				}
 				break;
 		}
-
 		// @codingStandardsIgnoreStart
 		// We don't necessarily want strict comparison here.
 		if ( $value != $el_value ) {
@@ -624,7 +652,7 @@ class Push extends Base {
 	protected function set_meta_field_value( $meta_key ) {
 		$updated    = false;
 		$meta_value = get_post_meta( $this->post->ID, $meta_key, 1 );
-
+		
 		$check = apply_filters( 'gc_config_pre_meta_field_value_updated', null, $meta_value, $meta_key, $this );
 		if ( null !== $check ) {
 			return $check;
@@ -668,6 +696,203 @@ class Push extends Base {
 
 		return apply_filters( 'gc_config_meta_field_value_updated', $updated, $meta_value, $meta_key, $this );
 	}
+
+
+	/**
+	* Sets the item config element value for ACF fields,
+	* if it is determeined that the value changed.
+	*
+	* @since 3.0.0
+	*
+	* @param  string $group_key  The ACF group key.
+	* @param  string $field_key  The ACF field key.
+	* @param  array  $post_data  The WP Post data array.
+	*
+	* @return bool $updated Whether value was updated.  
+	*/
+
+	protected function set_acf_field_value($group_key) {
+		// Always return true
+		$updated = true;
+	
+		// Get the post ID
+		$post_id = $this->post->ID;
+	
+		// Fetch the ACF field group using the group key
+		$field_group = get_field($group_key, $post_id);
+		// error_log(print_r($field_group, true));
+		// error_log(print_r($this->item->content, true));
+
+		$el = $this->element;
+		if (is_object($el) && property_exists($el, 'component_uuid')) {
+			// We have a component here
+			$structure_groups = $this->item->structure->groups;
+			$componentFieldsKeys = [];
+			// error_log(print_r($structure_groups, true));
+			foreach ($structure_groups as $group) {
+				$fields = $group->fields;
+				foreach ($fields as $field) {
+					if ($field->uuid == $el->component_uuid){
+						$component = $field->component;
+						// Check if the component property exists and is an object
+						if (is_object($component) && property_exists($component, 'fields')) {
+							// Access the fields property of the component object
+							$componentFields = $component->fields;
+							// error_log(print_r($componentFields, true));
+							foreach ($componentFields as $componentField) {
+								$componentFieldsKeys[]= $componentField->uuid;
+								$fieldType = $componentField->field_type;
+								
+							}
+						}
+					}
+				}
+			}
+
+			$groupData = [];
+			foreach ($field_group as $group) {
+				// Combine keys from componentFieldsKeys with values from the current group
+				$new_group = array_combine($componentFieldsKeys, $group);
+				$groupData[] = $new_group;
+			}
+			$outputArray = [];
+			$outputArrayArray = [];
+			$outputArrayText = [];
+			foreach ($groupData as $key => $dataInstance) {
+				foreach ($dataInstance as $field_uuid => $field_value) {
+					// Find the field in $componentFields using its UUID as the key
+					$field_type = null;
+					
+					foreach ($componentFields as $componentField) {
+						if ($componentField->uuid === $field_uuid) {
+							$field_type = $componentField->field_type;
+							break; // Stop iterating once the field with the matching UUID is found
+						}
+					}
+					
+					// Start switch case for each field type
+					switch ($field_type) {
+						case 'text':
+							// Handle text field type
+							if (is_array($field_value)) {
+								// $outputArrayArray = [];
+								// If the field value is an array, encode its elements separately
+								foreach ($field_value as $item) {
+									$jsonValue = $this->textFieldToJSON($item);
+									$encodedValue = [];
+									foreach ($item as $itemVal) {
+										$encodedValue[] = json_encode($itemVal); // Encode each array element directly
+									}
+									// Implode the encoded elements to form a single string
+									$encodedValue = implode(',', $encodedValue);
+									if ($jsonValue !== null) {
+										$outputArrayArray[] = $jsonValue;
+									}
+								}
+							} else {
+								// $outputArrayText = [];
+								// If the field value is not an array, encode it directly
+								// $jsonValue = $this->textFieldToJSON($field_value);
+								$jsonValue = json_encode($field_value);
+								if ($jsonValue !== null) {
+									$outputArrayText[] = $jsonValue;
+								}
+							}
+							
+							break;
+						case 'attachment':
+							// Handle attachment field type
+							break;
+						case 'choice_checkbox':
+							// Handle choice checkbox field type
+							// error_log(print_r($field_value, true));
+							break;
+						case 'choice_radio':
+							// Handle choice radio field type
+							break;
+						default:
+							// Default case if field type doesn't match any known cases
+							break;
+					}
+					
+				}
+			}
+
+			// if ($outputArray){
+			// 	$result = '[' . implode(',', $outputArray) . ']';
+			// 	$this->element->value = $result;
+			// 	$this->item_config[] = $this->element;
+			// }
+			// if ($outputArrayArray){
+			// 	$result = '[' . implode(',', $outputArrayArray) . ']';
+			// 	$this->element->value = $result;
+			// 	$this->item_config[] = $this->element;
+			// }
+			if ($outputArrayText){
+				$result = '[' . implode(',', $outputArrayText) . ']';
+				$this->element->value = $result;
+				$this->item_config[] = $this->element;
+			}
+			
+			
+		} else {
+			$outputArray = array();
+			foreach ($field_group as $item) {
+				// Get the values of the sub-array dynamically
+				$values = array_values($item);
+				// Use json_encode to encode the value
+				$outputArray[] = json_encode($values[0]);
+			}
+
+			$result = '[' . implode(',', $outputArray) . ']';
+
+			$this->element->value = $result;
+			// $this->item_config[] = $this->element;
+		}
+		
+		// error_log(print_r($this->item_config, true));
+
+		$updated = true;
+		return $updated;
+	}
+	
+
+
+	/**
+	 * Convert a value to JSON format, handling arrays accordingly
+	 * @param mixed $value The value to convert to JSON
+	 * @return string The JSON-encoded value
+	 */
+	protected function textFieldToJSON($value) {
+		if (is_array($value)) {
+			// If the value is an array, encode its elements separately
+			$encodedValue = [];
+			foreach ($value as $item) {
+				$encodedValue[] = json_encode($item); // Encode each array element directly
+			}
+			// Implode the encoded elements to form a single string
+			$encodedValue = implode(',', $encodedValue);
+		} else {
+			// If the value is not an array, encode it directly
+			$encodedValue = json_encode($value);
+		}
+		return $encodedValue;
+	}
+
+
+	/**
+	 * Transforms the value of an ACF field.
+	 * 
+	 * @param mixed $field The ACF field value to transform.
+	 *
+	 * @return mixed The transformed ACF field value.
+	 */
+	protected function transform_acf_field_value($field) {
+		// Lets implement transformation logic here
+		// error_log(print_r($field, true));
+		return $field;
+	}
+	
 
 	/**
 	 * Uses $callback to determine if each option value should be selected,
