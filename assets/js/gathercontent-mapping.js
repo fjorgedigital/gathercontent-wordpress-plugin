@@ -148,6 +148,7 @@ module.exports = function (app, gc) {
 			post_type: 'post',
 			field_value: false,
 			field_field: false,
+			field_subfields: false,
 			expanded: false,
 			required: false,
 			value: '',
@@ -419,7 +420,8 @@ module.exports = function (app, _meta_keys) {
 			this.metaKeys = new (app.collections.base.extend({
 				model: app.models.base.extend({ defaults: {
 						value: '',
-						field: ''
+						field: '',
+						subfields: ''
 					} }),
 				getByValue: function getByValue(value) {
 					return this.find(function (model) {
@@ -429,6 +431,11 @@ module.exports = function (app, _meta_keys) {
 				getByField: function getByField(field) {
 					return this.find(function (model) {
 						return model.get('field') === field;
+					});
+				},
+				getBySubfields: function getBySubfields(subfields) {
+					return this.find(function (model) {
+						return model.get('subfields') === subfields;
 					});
 				}
 			}))(_meta_keys);
@@ -455,18 +462,85 @@ module.exports = function (app, _meta_keys) {
 				this.model.set('field_field', '');
 			} else {
 				this.model.set('field_field', value);
+				// Update subfields
+				var component = jQuery(evt.target).closest('.component-table-wrapper').attr('id');
+				this.updateSubFields(component, value, false);
 			}
+		},
+
+		/**
+   * Update Sub Fields
+   * 
+   * @param {string} component - ID without the "#" of the component parent row
+   * @param {string} field_name - Parent field name/key of the sub fields, should be a repeater
+   * @param {object} saved_subfields - OPTIONAL: Pass saved subfields if you want to set pre-existing values
+   */
+		updateSubFields: function updateSubFields(component, field_name, saved_subfields) {
+			saved_subfields = typeof saved_subfields !== 'undefined' ? saved_subfields : {};
+			// console.log('updateSubFields: ',field_name);
+			// console.log('saved_subfields: ',saved_subfields);
+
+			// From sync.js
+			jQuery.post(window.ajaxurl, {
+				action: 'gc_component_subfields',
+				subfields_data: {
+					field_name: field_name
+				}
+			}, function (response) {
+				console.log('RESPONSE: ', response);
+
+				// SUCCESS
+				if (response.success) {
+					// Ensure response has subfield data
+					if (response.data.sub_fields && response.data.sub_fields.length) {
+						// Build options HTML:
+						var options_html = "<option value=''>Unused</option>";
+						jQuery.each(response.data.sub_fields, function (i, field) {
+							options_html += "<option value='" + field.key + "'>" + field.label + "</option>";
+						});
+						// Inject into select fields
+						jQuery('#' + component).find('.component-table-inner select').html(options_html);
+
+						// If existing subfields are passed, update specific dropdown options
+						if (Object.keys(saved_subfields).length) {
+							var dropdowns = jQuery('#' + component).find('.component-table-inner select').toArray();
+							jQuery.each(dropdowns, function (i, dropdown) {
+								i++;
+								jQuery(dropdown).val(saved_subfields[i]);
+							});
+							// Object.keys(saved_subfields).forEach(function(key) {
+							// 	// console.log(key + ": " + person[key]);
+							// 	jQuery(fields[key--]).val(saved_subfields[key]);
+							// });
+						}
+					}
+				}
+				// ERROR
+				else {
+						console.log('AJAX ERROR!');
+					}
+			});
 		},
 
 		render: function render() {
 			var val = this.model.get('field_value');
 			var valField = this.model.get('field_field');
+			var valSubfields = this.model.get('field_subfields');
 
 			if (val && !this.metaKeys.getByValue(val)) {
 				this.metaKeys.add({ value: val });
 			}
 			if (valField && !this.metaKeys.getByField(valField)) {
 				this.metaKeys.add({ field: valField });
+			}
+			if (valSubfields && !this.metaKeys.getBySubfields(valSubfields)) {
+				this.metaKeys.add({ subfields: valSubfields });
+			}
+
+			// Init subfields
+			if (valField && valSubfields) {
+				var component = this.model.get('name');
+				this.updateSubFields(component, valField, valSubfields);
 			}
 
 			var json = this.model.toJSON();

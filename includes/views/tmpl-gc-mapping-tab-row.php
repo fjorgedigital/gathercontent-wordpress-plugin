@@ -3,7 +3,7 @@
 ***********************************************/ ?>
 <# if ( data.typeName === 'component' ) { #>
 <td class="component-td-wrapper component-td" colspan="2">
-	<table class="component-table-wrapper">
+	<table id="{{data.name}}" class="component-table-wrapper">
 		<tr>
 <# } #>
 

@@ -76,6 +76,7 @@ class Handlers extends Plugin_Base {
 		add_action( 'wp_ajax_gc_wp_filter_mappings', array( $this, 'gc_wp_filter_mappings_cb' ) );
 		add_action( 'wp_ajax_gc_save_mapping_id', array( $this, 'gc_save_mapping_id_cb' ) );
 		add_action( 'wp_ajax_gc_dismiss_notice', array( $this, 'gc_dismiss_notice_cb' ) );
+		add_action( 'wp_ajax_gc_component_subfields', array( $this, 'gc_component_subfields_cb' ) );
 	}
 
 	/**
@@ -401,6 +402,32 @@ class Handlers extends Plugin_Base {
 			wp_send_json_success();
 		}
 
+		wp_send_json_error();
+	}
+
+	/**
+	 * Ajax callback when getting Component subfields for the mapping UI
+	 *
+	 * @since  3.2.20
+	 *
+	 * @return void
+	 */
+	public function gc_component_subfields_cb() {
+		if ( ! $this->_post_val( 'subfields_data' ) ) {
+			wp_send_json_error();
+		}
+		$data = $this->_post_val( 'subfields_data' );
+		$field_parent = get_field_object($data['field_name']);
+		// Query success, send response back
+		if ( $field_parent ) {
+			// Define response object
+			$success_data = array(
+				'sub_fields' => $field_parent['sub_fields'],
+			);
+			wp_send_json_success($success_data);
+		}
+
+		// If error
 		wp_send_json_error();
 	}
 
