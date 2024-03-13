@@ -1,5 +1,5 @@
 /**
- * GatherContent Plugin - v3.2.19 - 2024-03-04
+ * GatherContent Plugin - v3.2.19 - 2024-03-13
  * http://www.gathercontent.com
  *
  * Copyright (c) 2024 GatherContent
@@ -147,6 +147,7 @@ module.exports = function (app, gc) {
 			typeName: '',
 			post_type: 'post',
 			field_value: false,
+			field_field: false,
 			expanded: false,
 			required: false,
 			value: '',
@@ -406,20 +407,28 @@ module.exports = function (app, _meta_keys) {
 		events: {
 			'change .wp-type-select': 'changeType',
 			'change .wp-type-value-select': 'changeValue',
+			'change .wp-type-field-select': 'changeValueField',
 			'click  .gc-reveal-items': 'toggleExpanded'
 		},
 
 		initialize: function initialize() {
 			this.listenTo(this.model, 'change:field_type', this.render);
+			// console.log("this.model: ",this.model);
 
 			// Initiate the metaKeys collection.
 			this.metaKeys = new (app.collections.base.extend({
 				model: app.models.base.extend({ defaults: {
-						value: ''
+						value: '',
+						field: ''
 					} }),
 				getByValue: function getByValue(value) {
 					return this.find(function (model) {
 						return model.get('value') === value;
+					});
+				},
+				getByField: function getByField(field) {
+					return this.find(function (model) {
+						return model.get('field') === field;
 					});
 				}
 			}))(_meta_keys);
@@ -439,11 +448,25 @@ module.exports = function (app, _meta_keys) {
 			}
 		},
 
+		changeValueField: function changeValueField(evt) {
+			var value = jQuery(evt.target).val();
+			if ('' === value) {
+				this.model.set('field_value', '');
+				this.model.set('field_field', '');
+			} else {
+				this.model.set('field_field', value);
+			}
+		},
+
 		render: function render() {
 			var val = this.model.get('field_value');
+			var valField = this.model.get('field_field');
 
 			if (val && !this.metaKeys.getByValue(val)) {
 				this.metaKeys.add({ value: val });
+			}
+			if (valField && !this.metaKeys.getByField(valField)) {
+				this.metaKeys.add({ field: valField });
 			}
 
 			var json = this.model.toJSON();

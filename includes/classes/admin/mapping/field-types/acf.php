@@ -34,118 +34,74 @@ class ACF extends Base implements Type {
         global $wp_query;
 
         // VARIABLES
-        $data_results = array();
+        $options_acf_groups = array();
+        $options_acf_groups_fields = array();
 
-        /******************* BUILD FIELD GROUP OPTIONS ************************/
+        // ============= BUILD FIELD GROUP OPTIONS =============
         $groups_query = "SELECT * FROM wp_posts WHERE post_type = 'acf-field-group' AND post_status = 'publish' AND post_parent = 0";
         $group_results = $wpdb->get_results($groups_query);
         
         // FIELD GROUPS
-        $group_fields = array();
         if($group_results){
             foreach($group_results as $group) {
-                $fields_array = array();
-                // $fields_query = "SELECT * FROM wp_posts WHERE post_type = 'acf-field' AND post_content LIKE '%repeater%' AND post_parent = '$group->ID'"; // Use to get ONLY repeaters
-                $fields_query = "SELECT * FROM wp_posts WHERE post_type = 'acf-field' AND post_parent = '$group->ID'";
+                // Set the top level field group array of options
+                $options_acf_groups[$group->post_name] = $group->post_title;
+                // Create a blank array based on the group id to define the groups fields
+                $options_acf_groups_fields[$group->post_name] = array();
+
+                // Define fields query
+                $fields_query = "SELECT * FROM wp_posts WHERE post_type = 'acf-field' AND post_content LIKE '%repeater%' AND post_parent = '$group->ID'"; // Use to get ONLY repeaters
+                // $fields_query = "SELECT * FROM wp_posts WHERE post_type = 'acf-field' AND post_parent = '$group->ID'";
                 $fields_results = $wpdb->get_results($fields_query);
 
                 // Loop fields within each ACF Field Group
                 if($fields_results){
                     foreach($fields_results as $field) {
-                        $field_sub_fields_query = "SELECT * FROM wp_posts WHERE post_type = 'acf-field' AND post_parent = '$field->ID'";
-                        $sub_field_results = $wpdb->get_results($field_sub_fields_query);
-                        $sub_fields = array();
-
-                        // If field has sub-fields, loop sub-fields. ie: Repeaters, Groups, Flexible Content
-                        if(!empty($sub_field_results)) {
-                            foreach($sub_field_results as $sub_field) {
-                                $sub_field_array = array('sub_field_id' => $sub_field->ID, 'sub_field_title' => $sub_field->post_title, 'sub_field_name' => $sub_field->post_name);
-                                array_push($sub_fields, $sub_field_array);
-                            }
-                        }
-                        // Build Fields array, including sub-fields
-                        $field_fields = array('ID' => $field->ID, 'post_title' => $field->post_title, 'post_name' => $field->post_name, 'sub_fields' => $sub_fields );
-                        $fields_array[] = $field_fields;
-                    }
-                }
-                // Insert fields array to group by group_id
-                $group_fields['group_' . $group->ID] = $fields_array;
-            }
-        }
-        $data_results['field_groups'] = $group_fields;
-
-
-        /******************* GET SAVED MAPPING DATA ************************/
-        $mapping_id = absint( $this->_get_val( 'mapping' ) );
-        $saved_data = array();
-        $mapped_post_type = '';
-        $mapping_query = "SELECT post_content FROM wp_posts WHERE ID = $mapping_id LIMIT 1";
-        $mapping_results = $wpdb->get_results($mapping_query);
-        if($mapping_results){
-            foreach($mapping_results[0] as $key => $value) {
-                $mapping_parsed = json_decode($value, JSON_PRETTY_PRINT);
-                $mapped_post_type = $mapping_parsed['post_type'];
-                $saved_data['mapping'] = $mapping_parsed['mapping'];
-            }
-        }
-        $data_results['saved'] = $saved_data;
-
-
-        // UPDATE SAVED FIELD GROUPS
-        if($saved_data && $mapped_post_type) {
-            foreach($saved_data as $saved_group) {
-                foreach($saved_group as $data) {
-                    if($data['type'] == 'wp-type-acf') {
-                        $post_name = $data['value'];
-                        $group_query = "SELECT * FROM wp_posts WHERE post_name = '$post_name' LIMIT 1";
-                        $query_results = $wpdb->get_results($group_query);
-                        if($query_results){
-                            foreach($query_results as $post_data) {
-                                $post_id = $post_data->ID;
-                                $post_info = maybe_unserialize($post_data);
-                                $post_content_meta = maybe_unserialize($post_info->post_content);
-                                $post_type_data = array(array('param' => 'post_type', 'operator' => '==', 'value' => $mapped_post_type));
-                                if(!in_array($post_type_data,$post_content_meta['location'])) {
-                                    array_push($post_content_meta['location'],$post_type_data);
-                                    $updated_content = serialize($post_content_meta);
-                                    $data = array(
-                                        'ID' => $post_id,
-                                        'post_content' => $updated_content,
-                                    );
-                                    wp_update_post( $data );
-                                }
-                            }
-                        }
+                        $options_acf_groups_fields[$group->post_name][$field->post_name] = $field->post_title;
                     }
                 }
             }
         }
-        
+        // print_r($options_acf_groups);
+        // print_r($options_acf_groups_fields);
 
 
         // DATA LOADING
-        $results = json_encode($data_results,JSON_PRETTY_PRINT);
+        // $results = json_encode($data_results,JSON_PRETTY_PRINT);
         ?>
-        <div id="mapped" style="display:none;"><?php print_r($results); ?></div>
+        <!-- <div id="mapped" style="display:none;"><?php // print_r($results); ?></div> -->
 
         <# if ( '<?php $this->e_type_id(); ?>' === data.field_type ) { #>
 
             <select id="field-group-select-{{data.name}}" data-set="{{data.name}}" class="wp-type-value-select gc-select2 gc-select2-add-new field-select-group <?php $this->e_type_id(); ?>" name="<?php $view->output( 'option_base' ); ?>[mapping][{{ data.name }}][value]">
                 <option data-group="" data-set="" value="">Unused</option>
-                 <# _.each( <?php echo json_encode($group_results); ?>, function( group ) { #>
-                    <option data-group="{{group.post_name}}" <# if ( group.post_name == data.field_value ) { #> selected="selected"<# } #> data-set="{{data.field_value}}" value="{{ group.post_name }}" data-group-id="{{ group.ID }}">{{ group.post_title }}</option>
-                <# }); #>
+                <?php $this->underscore_options( $options_acf_groups ); ?>
+                <?php $this->underscore_empty_option( __( 'Do Not Import', 'gathercontent-import' ) ); ?>
             </select>
             <span style="display: block; margin: 5px 0;"></span>
-            <select id="field-select-{{data.name}}" data-set="{{data.name}}" class="wp-type-value-select gc-select2 gc-select2-add-new field-select-field <?php $this->e_type_id(); ?>" name="<?php $view->output( 'option_base' ); ?>[mapping][{{ data.name }}][field]">
-                <!-- Options will be populated dynamically -->
+            <select id="field-select-{{data.name}}" data-set="{{data.name}}" class="wp-type-field-select gc-select2 gc-select2-add-new field-select-field <?php $this->e_type_id(); ?>" name="<?php $view->output( 'option_base' ); ?>[mapping][{{ data.name }}][field]">
+                <?php /**
+                 * If first field has value > populate options from that field group
+                 * If field_field, mark selected
+                 */ ?>
+                <# if ( data.field_value ) { #>
+                    <?php foreach($options_acf_groups_fields as $group_id => $fields ): ?>
+                        <# if ( '<?php echo $group_id; ?>' === data.field_value ) { #>
+                            <option value="">Unused</option>
+                            <?php foreach($fields as $field_id => $field_name ):
+                                echo '<option <# if ( "' . $field_id . '" === data.field_field ) { #>selected="selected"<# } #> value="' . $field_id . '">' . $field_name . '</option>';
+                            endforeach; ?>
+                        <# } #>
+                    <?php endforeach; ?>
+                <# } #>
             </select>
             
         <# } #>
 <?php } } ?>
 
-<script src="https://code.jquery.com/jquery-migrate-3.3.2.min.js"></script>
+<?php // <script src="https://code.jquery.com/jquery-migrate-3.3.2.min.js"></script> ?>
 
+<?php /*
 <script>
     jQuery(window).on('load', function($) {
         var $ = jQuery;
@@ -155,10 +111,8 @@ class ACF extends Base implements Type {
         let field_groups = '';
         let saved_fields = '';
 
-        /**
-         * For new mappings, when the user needs to select the post type
-         * fire init functions on page change
-         */
+         // For new mappings, when the user needs to select the post type
+         // fire init functions on page change
         $(document).on('change', '#default-mapping-post_type select', function(){
             console.log('post type selected!');
             gc_acf_select_init();
@@ -167,7 +121,7 @@ class ACF extends Base implements Type {
         gc_acf_select_init();
 
         
-        /******************* TEMPLATE MAPPING ************************/
+        // ================ TEMPLATE MAPPING ================
 
         // GET ACF FIELD GROUPS & SAVED DATA
         // -- Type Select
@@ -180,9 +134,8 @@ class ACF extends Base implements Type {
             if( !$('#mapping-defaults').is(':visible') ){
                 var interval;
                 interval = setInterval(function(){
-                    console.log('interval hit');
                     data = $('#mapped').html();
-                    console.log('data 1: ', data);
+                    // console.log('data 1: ', data);
 
                     // Loop until data is retrieved, then clear
                     if(data) {
@@ -190,25 +143,25 @@ class ACF extends Base implements Type {
 
                         // GET Data and init layout
                         data = JSON.parse(data); 
-                        console.log('data 2: ', data);
+                        // console.log('data 2: ', data);
                         field_groups = data['field_groups'];
                         saved_fields = data['saved']['mapping'];
-                        console.log('field_groups: ', field_groups);
-                        console.log('saved_fields: ', saved_fields);
+                        // console.log('field_groups: ', field_groups);
+                        // console.log('saved_fields: ', saved_fields);
                     
                         // Init Functions
-                        gc_type_select();
-                        gc_group_init();
-                        gc_group_select();
-                        gc_fields_init();
-                        gc_fields_select();
+                        // gc_type_select();
+                        // gc_group_init();
+                        // gc_group_select();
+                        // gc_fields_init();
+                        // gc_fields_select();
                     }
                 }, 200);
             }
         }
     
 
-        /****** INIT FUNCTIONS ******/
+        // ======== INIT FUNCTIONS ========
         // GET GROUPS
         function gc_group_init() {
             $('.field-select-group').each(function() {
@@ -229,7 +182,7 @@ class ACF extends Base implements Type {
         }
 
 
-        /****** LISTENER FUNCTIONS ******/
+        // ======== LISTENER FUNCTIONS ========
         // TYPE CHANGE
         function gc_type_select() {
             $(document).on('change','.type-select',function() {
@@ -258,7 +211,7 @@ class ACF extends Base implements Type {
         }
 
 
-        /****** HELPER FUNCTIONS ******/
+        // ======== HELPER FUNCTIONS ========
         // GET FIELDS
         function gc_get_field_fields(select_id, action) {
             console.log('gc_get_field_fields');
@@ -369,3 +322,4 @@ class ACF extends Base implements Type {
 
     }); 
 </script>
+*/ ?>

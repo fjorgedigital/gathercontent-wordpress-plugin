@@ -39,20 +39,11 @@
 
 <?php // RIGHT COLUMN - WP DATA FIELDS ?>
 <td <# if (data.typeName === 'component') { #> class="gc-component-disabled column"<# } #>>
-	<# if ( data.type === 'text_rich' && data.is_repeatable ) { #>
-        <select class="wp-type-select type-select" name="<?php $this->output( 'option_base' ); ?>[mapping][{{ data.name }}][type]">
-			<option <# if ( '' === data.field_type ) { #>selected="selected"<# } #> value=""><?php _e( 'Unused', 'gathercontent-import' ); ?></option>
-			<?php do_action( 'gathercontent_field_type_option_underscore_template', $this ); ?>
-			<!-- <option value="wp-type-acf"><?php // _e( 'ACF Field Groups', 'gathercontent-import' ); ?></option> <?php // Display ACF when a text field is repeatable ?> -->
-        </select>
-		<?php do_action( 'gathercontent_field_type_underscore_template', $this ); ?>
-    <# } else { #>
-        <select class="wp-type-select type-select" name="<?php $this->output( 'option_base' ); ?>[mapping][{{ data.name }}][type]">
-            <option <# if ( '' === data.field_type ) { #>selected="selected"<# } #> value=""><?php _e( 'Unused', 'gathercontent-import' ); ?></option>
-            <?php do_action( 'gathercontent_field_type_option_underscore_template', $this ); ?>
-        </select>
-        <?php do_action( 'gathercontent_field_type_underscore_template', $this ); ?>
-    <# } #>
+	<select class="wp-type-select type-select" name="<?php $this->output( 'option_base' ); ?>[mapping][{{ data.name }}][type]">
+		<option <# if ( '' === data.field_type ) { #>selected="selected"<# } #> value=""><?php _e( 'Unused', 'gathercontent-import' ); ?></option>
+		<?php do_action( 'gathercontent_field_type_option_underscore_template', $this ); ?>
+	</select>
+	<?php do_action( 'gathercontent_field_type_underscore_template', $this ); ?>
 </td>
 
 
