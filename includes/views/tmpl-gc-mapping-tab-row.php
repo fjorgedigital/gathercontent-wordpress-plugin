@@ -75,16 +75,10 @@
 
 						<?php /** COMPONENT SUB-FIELDS: WP SELECTs **/ ?>
 						<td class="acf-components" data-set="{{ data.name }}">
-							<# if ( field.component ) { #>
-								<select class="" name="<?php $this->output( 'option_base' ); ?>[mapping][{{ data.name }}][type]">
-									<option value="Component"><?php _e( 'Component', 'gathercontent-import' ); ?></option>
-								</select>
-							<# } else { #>
-								<select id="component-child-{{ data.name }}-{{ index }}" data-set="{{ data.name }}" class="component-child" data-index="{{index}}" name="<?php $this->output( 'option_base' ); ?>[mapping][{{ data.name }}][sub_fields][{{index}}]">
-									<option <# if ( '' === data.field_type ) { #>selected="selected"<# } #> value=""><?php _e( 'Unused', 'gathercontent-import' ); ?></option>
-									<?php // do_action( 'gathercontent_field_type_option_underscore_template', $this ); ?>
-								</select>
-							<# } #>
+							<select id="component-child-{{ data.name }}-{{ index }}" data-set="{{ data.name }}" class="component-child wp-subfield-select" data-index="{{index}}" name="<?php $this->output( 'option_base' ); ?>[mapping][{{ data.name }}][sub_fields][{{index}}]">
+								<option value=""><?php _e( 'Unused', 'gathercontent-import' ); ?></option>
+								<?php // do_action( 'gathercontent_field_type_option_underscore_template', $this ); ?>
+							</select>
 						</td>
 					</tr>
 				<# index = index + 1; }); #>

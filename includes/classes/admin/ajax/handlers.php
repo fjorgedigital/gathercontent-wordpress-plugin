@@ -414,21 +414,35 @@ class Handlers extends Plugin_Base {
 	 */
 	public function gc_component_subfields_cb() {
 		if ( ! $this->_post_val( 'subfields_data' ) ) {
-			wp_send_json_error();
+			wp_send_json_error("one");
 		}
 		$data = $this->_post_val( 'subfields_data' );
-		$field_parent = get_field_object($data['field_name']);
-		// Query success, send response back
-		if ( $field_parent ) {
-			// Define response object
-			$success_data = array(
-				'sub_fields' => $field_parent['sub_fields'],
-			);
-			wp_send_json_success($success_data);
-		}
 
+		// If ACF Field group
+		if ( $data['name'] && str_contains($data['name'],"group") ){
+			$field_group = acf_get_fields($data['name']);
+			// If Repeater with sub fields
+			if($field_group){
+				$success_data = array(
+					'field_data' => $field_group,
+				);
+				wp_send_json_success($success_data);
+			}
+		}
+		// If field, get sub fields
+		elseif ( $data['name'] && str_contains($data['name'],"field") ){
+			$field_parent = get_field_object($data['name']);
+			// If Repeater with sub fields
+			if($field_parent['sub_fields']){
+				$success_data = array(
+					'field_data' => $field_parent['sub_fields'],
+				);
+				wp_send_json_success($success_data);
+			}
+		}
+		
 		// If error
-		wp_send_json_error();
+		wp_send_json_error("two");
 	}
 
 	/*
