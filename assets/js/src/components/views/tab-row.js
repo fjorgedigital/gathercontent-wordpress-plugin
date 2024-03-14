@@ -57,7 +57,6 @@ module.exports = function( app, _meta_keys ) {
 				// Update subfields
 				if( "component" === type ){
 					var component = jQuery( evt.target ).closest('.component-table-wrapper').attr('id');
-					console.log("changeValue - component: ",component);
 					this.updateAjax_Field(component, value, false);
 				}
 			}
@@ -65,14 +64,14 @@ module.exports = function( app, _meta_keys ) {
 
 		changeField: function( evt ) {
 			var value = jQuery( evt.target ).val();
+			var component = jQuery( evt.target ).closest('.component-table-wrapper').attr('id');
 			if ( '' === value ) {
-				this.model.set( 'field_value', '' );
 				this.model.set( 'field_field', '' );
 				this.model.set( 'field_subfields', {} );
+				jQuery('#'+component).find('.component-table-inner select').html("<option value=''>Unused</option>").val("");
 			} else {
 				this.model.set( 'field_field', value );
 				// Update subfields
-				var component = jQuery( evt.target ).closest('.component-table-wrapper').attr('id');
 				this.updateAjax_ComponentSubfields(component, value, false);
 			}
 		},
@@ -95,9 +94,9 @@ module.exports = function( app, _meta_keys ) {
 		 */
 		updateAjax_Field: function( component, field_name, saved_fields ) {
 			saved_fields = typeof saved_fields !== 'undefined' ? saved_fields : "";
-			console.log('updateAjax_Field');
-			console.log('field_name: ',field_name);
-			console.log('saved_fields: ',saved_fields);
+			// console.log('updateAjax_Field');
+			// console.log('field_name: ',field_name);
+			// console.log('saved_fields: ',saved_fields);
 
 			jQuery.post( window.ajaxurl, {
 				action: 'gc_component_subfields',
@@ -186,9 +185,9 @@ module.exports = function( app, _meta_keys ) {
 			var valField = this.model.get( 'field_field' );
 			var valSubfields = this.model.get( 'field_subfields' );
 			var component;
-			console.log("render - val: ",val);
-			console.log("render - valField: ",valField);
-			console.log("render - valSubfields: ",valSubfields);
+			// console.log("render - val: ",val);
+			// console.log("render - valField: ",valField);
+			// console.log("render - valSubfields: ",valSubfields);
 
 			if ( val && ! this.metaKeys.getByValue( val ) ) {
 				this.metaKeys.add( { value : val } );
