@@ -60,7 +60,7 @@
 			<?php /** COMPONENT SUB-FIELDS: FROM GC **/ ?>
 			<table class="component-table-inner">
 				<# _.each(data.component.fields, function(field) {  #>
-					<?php echo '<pre>{{ JSON.stringify(data.component.fields[index--], null, 2) }}</pre>' ?>
+					<?php // echo '<pre>{{ JSON.stringify(data.component.fields[index--], null, 2) }}</pre>' ?>
 					<tr>
 						<td class="">
 							<# if ( field.metadata && field.metadata.repeatable && field.metadata.repeatable.isRepeatable ) { #>
