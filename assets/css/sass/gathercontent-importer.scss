@@ -170,7 +170,23 @@ ul.gc-radio-desc li, ul.gc-reveal-items-list li {
 				padding-left:2.5em;
 			}
 		}
+
+		tr{
+			// Show / Hide ACF field types
+			&.text{
+				option[data-type="text"]{ display:block; }
+			}
+			&.repeater{
+				option[data-type="text"]{ display:none; }
+				option[data-type="repeater"]{ display:block; }
+			}
+			&.attachment{
+				option[data-type="gallery"]{ display:block; }
+			}
+		}
 	}
+	
+
 }
 
 .gc-disabled {
@@ -243,6 +259,8 @@ ul.gc-radio-desc li, ul.gc-reveal-items-list li {
 		text-transform:capitalize;
 	}
 }
+
+
 
 .gc-loader {
 	margin: 0 auto;

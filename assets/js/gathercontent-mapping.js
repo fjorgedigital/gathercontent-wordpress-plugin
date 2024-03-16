@@ -1,5 +1,5 @@
 /**
- * GatherContent Plugin - v3.2.19 - 2024-03-14
+ * GatherContent Plugin - v3.2.19 - 2024-03-16
  * http://www.gathercontent.com
  *
  * Copyright (c) 2024 GatherContent
@@ -489,6 +489,16 @@ module.exports = function (app, _meta_keys) {
 			this.model.set('field_subfields', subfield_data);
 		},
 
+		optionBuilder: function optionBuilder(data) {
+			console.log('optionBuilder');
+			var options_html = "<option value=''>Unused</option>";
+			jQuery.each(data.field_data, function (i, field) {
+				console.log('data: ', data);
+				options_html += "<option class='hidden' value='" + field.key + "' data-type='" + field.type + "'>" + field.label + "</option>";
+			});
+			return options_html;
+		},
+
 		/**
    * AJAX Update: "Field" - ACF Field group's field
    * 
@@ -498,6 +508,7 @@ module.exports = function (app, _meta_keys) {
    */
 		updateAjax_Field: function updateAjax_Field(component, field_name, saved_fields) {
 			saved_fields = typeof saved_fields !== 'undefined' ? saved_fields : "";
+			var $this = this;
 			// console.log('updateAjax_Field');
 			// console.log('field_name: ',field_name);
 			// console.log('saved_fields: ',saved_fields);
@@ -515,10 +526,7 @@ module.exports = function (app, _meta_keys) {
 					// Ensure response has subfield data
 					if (response.data.field_data && response.data.field_data.length) {
 						// Build options HTML:
-						var options_html = "<option value=''>Unused</option>";
-						jQuery.each(response.data.field_data, function (i, field) {
-							options_html += "<option value='" + field.key + "'>" + field.label + "</option>";
-						});
+						var options_html = $this.optionBuilder(response.data);
 						// Inject into select fields
 						jQuery('#' + component).find('.wp-type-field-select').html(options_html);
 
@@ -544,6 +552,7 @@ module.exports = function (app, _meta_keys) {
    */
 		updateAjax_ComponentSubfields: function updateAjax_ComponentSubfields(component, field_name, saved_fields) {
 			saved_fields = typeof saved_fields !== 'undefined' ? saved_fields : {};
+			var $this = this;
 			// console.log('updateSubFields: ',field_name);
 			// console.log('saved_fields: ',saved_fields);
 
@@ -560,10 +569,7 @@ module.exports = function (app, _meta_keys) {
 					// Ensure response has subfield data
 					if (response.data.field_data && response.data.field_data.length) {
 						// Build options HTML:
-						var options_html = "<option value=''>Unused</option>";
-						jQuery.each(response.data.field_data, function (i, field) {
-							options_html += "<option value='" + field.key + "'>" + field.label + "</option>";
-						});
+						var options_html = $this.optionBuilder(response.data);
 						// Inject into select fields
 						jQuery('#' + component).find('.component-table-inner select').html(options_html);
 

@@ -73,7 +73,7 @@
 			<table class="component-table-inner">
 				<# _.each(data.component.fields, function(field) {  #>
 					<?php // echo '<pre>{{ JSON.stringify(data.component.fields[index], null, 2) }}</pre>' ?>
-					<tr>
+					<tr class="{{ field.field_type }} <# if ( field?.metadata?.repeatable?.isRepeatable ) { #>repeater<# } #>">
 						<td class="">
 							<# if ( field.metadata && field.metadata.repeatable && field.metadata.repeatable.isRepeatable ) { #>
 								<span class="dashicons dashicons-controls-repeat" title="Repeatable Field"></span>
