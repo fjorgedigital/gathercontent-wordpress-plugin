@@ -121,12 +121,15 @@ ul.gc-radio-desc li, ul.gc-reveal-items-list li {
         padding-left: 2.5em; }
     .gc-template-tab .component-table-inner tr.text option[data-type="text"] {
       display: block; }
+    .gc-template-tab .component-table-inner tr.attachment option[data-type="gallery"] {
+      display: block; }
     .gc-template-tab .component-table-inner tr.repeater option[data-type="text"] {
       display: none; }
     .gc-template-tab .component-table-inner tr.repeater option[data-type="repeater"] {
       display: block; }
-    .gc-template-tab .component-table-inner tr.attachment option[data-type="gallery"] {
-      display: block; }
+  .gc-template-tab .ajax-disabled {
+    opacity: 0.75;
+    pointer-events: none; }
 
 .gc-disabled label span, .gc-disabled .description {
   opacity: .5; }

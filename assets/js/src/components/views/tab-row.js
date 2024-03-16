@@ -13,7 +13,7 @@ module.exports = function( app, _meta_keys ) {
 
 		initialize: function() {
 			this.listenTo( this.model, 'change:field_type', this.render );
-			console.log("this.model: ",this.model);
+			// console.log("this.model: ",this.model);
 
 			// Initiate the metaKeys collection.
 			this.metaKeys = new ( app.collections.base.extend( {
@@ -65,9 +65,10 @@ module.exports = function( app, _meta_keys ) {
 		changeField: function( evt ) {
 			var value = jQuery( evt.target ).val();
 			var component = jQuery( evt.target ).closest('.component-table-wrapper').attr('id');
+			// Update Data
+			this.model.set( 'field_subfields', {} );
 			if ( '' === value ) {
 				this.model.set( 'field_field', '' );
-				this.model.set( 'field_subfields', {} );
 				jQuery('#'+component).find('.component-table-inner select').html("<option value=''>Unused</option>").val("");
 			} else {
 				this.model.set( 'field_field', value );
@@ -109,12 +110,17 @@ module.exports = function( app, _meta_keys ) {
 			// console.log('field_name: ',field_name);
 			// console.log('saved_fields: ',saved_fields);
 
+			// Update UI
+			jQuery('#'+component+' .wp-type-field-select').addClass('ajax-disabled');
+			// Get Updated Data
 			jQuery.post( window.ajaxurl, {
 				action: 'gc_component_subfields',
 				subfields_data: {
 					name: field_name,
 				}
 			}, function( response ) {
+				// Update UI
+				jQuery('#'+component+' .wp-type-field-select').removeClass('ajax-disabled');
 				console.log('RESPONSE: ',response);
 
 				// SUCCESS
@@ -152,12 +158,17 @@ module.exports = function( app, _meta_keys ) {
 			// console.log('updateSubFields: ',field_name);
 			// console.log('saved_fields: ',saved_fields);
 
+			// Update UI
+			jQuery('#'+component+' .component-table-inner').find('select').addClass('ajax-disabled');
+			// Get Updated Data
 			jQuery.post( window.ajaxurl, {
 				action: 'gc_component_subfields',
 				subfields_data: {
 					name: field_name,
 				}
 			}, function( response ) {
+				// Update UI
+				jQuery('#'+component+' .component-table-inner').find('select').removeClass('ajax-disabled');
 				console.log('RESPONSE: ',response);
 
 				// SUCCESS

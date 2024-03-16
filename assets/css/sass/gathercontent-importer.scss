@@ -176,17 +176,20 @@ ul.gc-radio-desc li, ul.gc-reveal-items-list li {
 			&.text{
 				option[data-type="text"]{ display:block; }
 			}
+			&.attachment{
+				option[data-type="gallery"]{ display:block; }
+			}
 			&.repeater{
 				option[data-type="text"]{ display:none; }
 				option[data-type="repeater"]{ display:block; }
 			}
-			&.attachment{
-				option[data-type="gallery"]{ display:block; }
-			}
 		}
 	}
 	
-
+	.ajax-disabled{
+		opacity:0.75;
+		pointer-events:none;
+	}
 }
 
 .gc-disabled {
