@@ -14,7 +14,7 @@
 <?php // LEFT COLUMN - GC DATA ?>
 <td <# if (data.typeName === 'component') { #> class="gc-component-disabled column"<# } #>>
 	<# if ( ( data.limit && data.limit_type ) || data.instructions || data.typeName ) { #>
-		<?php // <pre>{{ JSON.stringify(data, null, 2) }}</pre> ?>
+		<?php // echo '<pre>{{ JSON.stringify(data, null, 2) }}</pre>' ?>
 		<# if ( ( data.is_repeatable ) ) { #>
 			<span class="dashicons dashicons-controls-repeat" title="Repeatable Field"></span>
 		<# } #>
@@ -50,6 +50,18 @@
 <?php /*******************************************
 	Component: Sub-Fields Row & Close Wrapper
 ***********************************************/ ?>
+<# 
+	var subfield_type_translate = { 
+		'text'            : 'Rich Text',
+		'text_rich'       : 'Rich Text',
+		'text_plain'      : 'Plain Text',
+		'choice_radio'    : 'Muliple Choice',
+		'choice_checkbox' : 'Checkboxes',
+		'files'           : 'Attachment',
+		'attachment'      : 'Attachment',
+	};
+#>
+
 <# if ( data.component ) { index = 1; #>
 		</tr>
 
@@ -60,15 +72,17 @@
 			<?php /** COMPONENT SUB-FIELDS: FROM GC **/ ?>
 			<table class="component-table-inner">
 				<# _.each(data.component.fields, function(field) {  #>
-					<?php // echo '<pre>{{ JSON.stringify(data.component.fields[index--], null, 2) }}</pre>' ?>
+					<?php // echo '<pre>{{ JSON.stringify(data.component.fields[index], null, 2) }}</pre>' ?>
 					<tr>
 						<td class="">
 							<# if ( field.metadata && field.metadata.repeatable && field.metadata.repeatable.isRepeatable ) { #>
 								<span class="dashicons dashicons-controls-repeat" title="Repeatable Field"></span>
 							<# } #>
-							<a title="<?php _ex( 'Click to show additional details', 'About the GatherContent object', 'gathercontent-import' ); ?>" href="#" class="gc-reveal-items dashicons-before dashicons-arrow-right"><strong>{{ field.label }} <small>{{ field.subtitle }}</small></strong></a>
+							<a title="<?php _ex( 'Click to show additional details', 'About the GatherContent object', 'gathercontent-import' ); ?>" href="#" class="gc-reveal-items dashicons-before dashicons-arrow-right">
+								<strong>{{ field.label }} <small>{{ field.subtitle }}</small></strong>
+							</a>
 							<ul class="gc-reveal-items-list gc-reveal-items-hidden hidden">
-								<# if(( field.field_type )){ #> <li><strong><?php _e( 'Type:', 'gathercontent-import' ); ?></strong> {{ field.field_type }}</li> <# } #>
+								<# if(( field.field_type )){ #> <li><strong><?php _e( 'Type:', 'gathercontent-import' ); ?></strong> {{ subfield_type_translate[field.field_type] }}</li> <# } #>
 								<# if(( field.instructions )){ #> <li><strong><?php _e( 'Instructions:', 'gathercontent-import' ); ?></strong> {{ field.instructions }}</li> <# } #>
 							</ul>
 						</td>
