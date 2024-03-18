@@ -1,5 +1,5 @@
 /**
- * GatherContent Plugin - v3.2.19 - 2024-03-16
+ * GatherContent Plugin - v3.2.19 - 2024-03-18
  * http://www.gathercontent.com
  *
  * Copyright (c) 2024 GatherContent
@@ -415,7 +415,7 @@ module.exports = function (app, _meta_keys) {
 
 		initialize: function initialize() {
 			this.listenTo(this.model, 'change:field_type', this.render);
-			// console.log("this.model: ",this.model);
+			console.log("this.model: ", this.model);
 
 			// Initiate the metaKeys collection.
 			this.metaKeys = new (app.collections.base.extend({
@@ -449,6 +449,7 @@ module.exports = function (app, _meta_keys) {
 		changeValue: function changeValue(evt) {
 			var value = jQuery(evt.target).val();
 			var type = this.model.get('type');
+			var fieldType = this.model.get('field_type');
 			if ('' === value) {
 				this.model.set('field_type', '');
 				this.model.set('field_value', '');
@@ -457,11 +458,16 @@ module.exports = function (app, _meta_keys) {
 				jQuery('#' + component + ' .component-table-inner ').find('select').html("<option value=''>Unused</option>").val("");
 			} else {
 				this.model.set('field_value', value);
-				// Update subfields
+				// Components - Update "Field"
 				if ("component" === type) {
 					var component = jQuery(evt.target).closest('.component-table-wrapper').attr('id');
 					this.updateAjax_Field(component, value, false);
 				}
+				// Repeaters - Update "Field"
+				else if ("wp-type-acf" === fieldType) {
+						var id = jQuery(evt.target).closest('td').attr('id');
+						this.updateAjax_Field(id, value, false);
+					}
 			}
 		},
 
@@ -495,7 +501,7 @@ module.exports = function (app, _meta_keys) {
 			console.log('optionBuilder');
 			var options_html = "<option value=''>Unused</option>";
 			jQuery.each(data.field_data, function (i, field) {
-				console.log('data: ', data);
+				// console.log('data: ',data);
 				options_html += "<option class='hidden' value='" + field.key + "' data-type='" + field.type + "'>" + field.label + "</option>";
 			});
 			return options_html;
