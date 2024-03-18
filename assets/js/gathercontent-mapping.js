@@ -454,6 +454,7 @@ module.exports = function (app, _meta_keys) {
 				this.model.set('field_value', '');
 				this.model.set('field_field', '');
 				this.model.set('field_subfields', {});
+				jQuery('#' + component + ' .component-table-inner ').find('select').html("<option value=''>Unused</option>").val("");
 			} else {
 				this.model.set('field_value', value);
 				// Update subfields
@@ -471,7 +472,7 @@ module.exports = function (app, _meta_keys) {
 			this.model.set('field_subfields', {});
 			if ('' === value) {
 				this.model.set('field_field', '');
-				jQuery('#' + component).find('.component-table-inner select').html("<option value=''>Unused</option>").val("");
+				jQuery('#' + component + ' .component-table-inner ').find('select').html("<option value=''>Unused</option>").val("");
 			} else {
 				this.model.set('field_field', value);
 				// Update subfields
@@ -515,7 +516,7 @@ module.exports = function (app, _meta_keys) {
 			// console.log('saved_fields: ',saved_fields);
 
 			// Update UI
-			jQuery('#' + component + ' .wp-type-field-select').addClass('ajax-disabled');
+			jQuery('#' + component + ' .wp-type-field-select ~ span.select2').addClass('ajax-disabled');
 			// Get Updated Data
 			jQuery.post(window.ajaxurl, {
 				action: 'gc_component_subfields',
@@ -524,7 +525,7 @@ module.exports = function (app, _meta_keys) {
 				}
 			}, function (response) {
 				// Update UI
-				jQuery('#' + component + ' .wp-type-field-select').removeClass('ajax-disabled');
+				jQuery('#' + component + ' .wp-type-field-select ~ span.select2').removeClass('ajax-disabled');
 				console.log('RESPONSE: ', response);
 
 				// SUCCESS
