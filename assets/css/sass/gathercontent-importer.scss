@@ -144,6 +144,14 @@ ul.gc-radio-desc li, ul.gc-reveal-items-list li {
 		// &:last-child {
 		// 	text-align: right;
 		// }
+		option[value="wp-type-acf"]{
+			display:none;
+		}
+		&.type-repeater{
+			option[value="wp-type-acf"]{
+				display:block;
+			}
+		}
 	}
 
 	/****** COMPONENT TABLE ******/
@@ -174,13 +182,30 @@ ul.gc-radio-desc li, ul.gc-reveal-items-list li {
 		tr{
 			// Show / Hide ACF field types
 			&.text{
-				option[data-type="text"]{ display:block; }
+				option[data-type="text"],
+				option[data-type="textarea"],
+				option[data-type="wysiwyg"]{ 
+					display:block;
+				}
 			}
 			&.attachment{
-				option[data-type="gallery"]{ display:block; }
+				option[data-type="gallery"],
+				option[data-type="image"]{ 
+					display:block; 
+				}
+			}
+			&.choice_checkbox{
+				option[data-type="checkbox"]{ display:block; }
+			}
+			&.choice_radio{
+				option[data-type="radio"]{ display:block; }
 			}
 			&.repeater{
-				option[data-type="text"]{ display:none; }
+				option[data-type="text"],
+				option[data-type="textarea"],
+				option[data-type="wysiwyg"]{ 
+					display:none;
+				}
 				option[data-type="repeater"]{ display:block; }
 			}
 		}
