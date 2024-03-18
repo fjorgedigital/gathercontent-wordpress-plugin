@@ -121,7 +121,6 @@ class Push extends Base {
 		$this->set_item( \GatherContent\Importer\get_post_item_id( $this->post->ID ), true );
 
 		$config_update = $this->map_wp_data_to_gc_data();
-		// error_log(print_r($config_update, true));
 
 		// No updated data, so bail.
 		if ( empty( $config_update ) ) {
@@ -153,13 +152,11 @@ class Push extends Base {
 	 * @return mixed Result of push.
 	 */
 	public function maybe_do_item_update( $update ) {
-		// error_log(print_r($update, true));
 		// Get our initial croonfig reference.
 		$config = json_decode( $this->config );
 
 		// And update the content with the new values.
 		foreach ( $update as $updated_element ) {
-			// error_log(print_r($updated_element, true));
 			$element_id = $updated_element->name;
 
 			// handle repeatable elements because we stored them in JSON format earlier and GC requires it in array format
@@ -311,7 +308,7 @@ class Push extends Base {
 	 */
 	protected function map_wp_data_to_gc_data() {
 		$config = $this->loop_item_elements_and_map();
-		// error_log(print_r($this, true));
+
 		return apply_filters( 'gc_update_gc_config_data', $config, $this );
 	}
 
@@ -353,7 +350,7 @@ class Push extends Base {
 					$metadata      = $field->metadata;
 					$is_component_repeatable = ( is_object( $metadata ) && isset( $metadata->repeatable ) ) ? $metadata->repeatable->isRepeatable : false;
 				}
-				// error_log(print_r($fields_data, true));
+
 				$componentProcessed = false;
 				foreach ( $fields_data as $field_data ) {
 
@@ -362,14 +359,14 @@ class Push extends Base {
 					if ( $component_uuid ) {
 						$this->element->component_uuid = $component_uuid;
 					}
-					// error_log(print_r($field_data, true));
+
 					$uuid = $this->element->name;
 					if ( $component_uuid && !$componentProcessed) {
 						$this->element->component_uuid = $component_uuid;
 						$uuid = $component_uuid . '_component_' . $component_uuid;
 						// $componentProcessed = true;
 					}
-					// error_log(print_r($uuid, true));
+
 					$source      = $this->mapping->data( $uuid );
 					$source_type = isset( $source['type'] ) ? $source['type'] : '';
 					
@@ -394,22 +391,19 @@ class Push extends Base {
 
 						$this->done[ $source_type ][ $source_key ][ $index . ':' . $element_index ] = (array) $this->element;
 					}
-					// error_log(print_r($this->set_values_from_wp( $source_type, $source_key ), true));
-					// error_log(print_r($this->element, true));
+
 					if (
 						$source
 						&& isset( $source['type'], $source['value'] )
 						&& $this->set_values_from_wp( $source_type, $source_key )
 					) {
 						$this->item_config[] = $this->element;
-						// error_log(print_r($source, true));
-						// error_log(print_r($this->element, true));
 					}
 				}
 			}
 		}
 
-		error_log(print_r($this->item_config, true));////
+		// error_log(print_r($this->item_config, true));
 		$this->remove_unknowns();
 		
 		return $this->item_config;
@@ -467,7 +461,7 @@ class Push extends Base {
 	 */
 	protected function set_values_from_wp( $source_type, $source_key ) {
 		$updated = false;
-		// error_log("*****Source Type: $source_type ******** Source Key: $source_key *****");
+
 		switch ( $source_type ) {
 			case 'wp-type-post':
 				$updated = $this->set_post_field_value( $source_key );
@@ -565,7 +559,7 @@ class Push extends Base {
 	protected function set_post_field_value( $post_column ) {
 		$updated  = false;
 		$el_value = $this->element->value; 
-		// error_log(print_r($this, true));
+
 		$value = ! empty( $this->post->{$post_column} ) ? self::remove_zero_width( $this->post->{$post_column} ) : false;
 		$value = apply_filters( "gc_get_{$post_column}", $value, $this );
 
@@ -743,8 +737,7 @@ class Push extends Base {
 	*/
 
 	protected function set_acf_field_value($group_key) {
-		// Always return true
-		$updated = true;
+		$updated = false;
 	
 		// Get the post ID
 		$post_id = $this->post->ID;
@@ -753,6 +746,7 @@ class Push extends Base {
 		$field_group = get_field($group_key, $post_id);
 	
 		$el = $this->element;
+		$el_value = $this->element->value; 
 		if (is_object($el) && property_exists($el, 'component_uuid')) {
 			// We have a component here
 			$structure_groups = $this->item->structure->groups;
@@ -822,9 +816,11 @@ class Push extends Base {
 						// Call the corresponding processing function for each field UUID
 						$processorFunction = $fieldTypeProcessors[$field_type];
 						$jsonValue = $this->$processorFunction($field_values);
+					
 						// Assign the processed value to the corresponding element
-						if ($this->element->name == $field_uuid){
+						if (($this->element->name == $field_uuid) && ($this->element->value !=  $jsonValue)){
 							$this->element->value = $jsonValue;
+							$updated = true;
 						}
 					} else {
 						// Handle unknown field types or skip
@@ -840,11 +836,12 @@ class Push extends Base {
 				$outputArray[] = json_encode($values[0]);
 			}
 
-			$result = '[' . implode(',', $outputArray) . ']';
-
-			$this->element->value = $result;
+			$jsonValue = '[' . implode(',', $outputArray) . ']';
+			if ($this->element->value !=  $jsonValue){
+				$this->element->value = $jsonValue;
+				$updated = true;
+			}
 		}
-		
 		return $updated;
 	}
 	
