@@ -98,6 +98,7 @@ class Pull extends Base {
 	 * @return mixed Result of pull.
 	 */
 	protected function do_item( $id ) {
+		$roundTwo = false;
 
 		$this->check_mapping_data( $this->mapping );
 
@@ -107,6 +108,7 @@ class Pull extends Base {
 		$attachments = $tax_terms = false;
 
 		if ( $existing = \GatherContent\Importer\get_post_by_item_id( $id ) ) {
+			
 			// Check if item is up-to-date and if pull is necessary.
 			$meta       = \GatherContent\Importer\get_post_item_meta( $existing->ID );
 			$updated_at = isset( $meta['updated_at'] ) ? $meta['updated_at'] : 0;
@@ -132,8 +134,9 @@ class Pull extends Base {
 			$post_data = (array) $existing;
 		} else {
 			$post_data['ID'] = 0;
+			$roundTwo = true;
 		}
-
+		
 		$post_data = $this->map_gc_data_to_wp_data( $post_data );
 
 		if ( ! empty( $post_data['attachments'] ) ) {
@@ -145,13 +148,13 @@ class Pull extends Base {
 			$tax_terms = $post_data['tax_input'];
 			unset( $post_data['tax_input'] );
 		}
-
+		
 		$post_id = wp_insert_post( $post_data, 1 );
 
 		if ( is_wp_error( $post_id ) ) {
 			throw new Exception( $post_id->get_error_message(), __LINE__, $post_id->get_error_data() );
 		}
-
+		
 		$post_data['ID'] = $post_id;
 
 		// Store item ID reference to post-meta.
@@ -222,6 +225,12 @@ class Pull extends Base {
 			// Update the GC item status.
 			$this->api->set_item_status( $id, $status );
 		}
+		
+		// Call methods the second time to get post working for the acf fields. 
+		// We can later look for a beter approach to handle this but this works just fine.
+		if ($roundTwo == true){
+			$post_data = $this->set_acf_field_value( $post_data );
+		}
 
 		return $post_id;
 	}
@@ -257,7 +266,7 @@ class Pull extends Base {
 		if ( $this->should_map_hierarchy( $post_data['post_type'] ) && isset( $this->item->position ) ) {
 			$post_data['menu_order'] = absint( $this->item->position );
 		}
-
+		
 		$post_data = $this->loop_item_elements_and_map( $post_data );
 
 		// Put the backup data back.
@@ -270,7 +279,7 @@ class Pull extends Base {
 		if ( $this->should_update_title_with_item_name( $post_data ) ) {
 			$post_data['post_title'] = sanitize_text_field( $this->item->name );
 		}
-
+		
 		if ( ! empty( $post_data['ID'] ) ) {
 			$post_data = apply_filters( 'gc_update_wp_post_data', $post_data, $this );
 		} else {
@@ -366,7 +375,7 @@ class Pull extends Base {
 				}
 				
 				$componentProcessed = false; // Initialize flag outside the loop
-
+				
 				foreach ($fields_data as $field_data) {
 					$this->element = (object) $this->format_element_data($field_data, $component_uuid, true, $is_component_repeatable);
 					$uuid = $this->element->name;
@@ -404,7 +413,6 @@ class Pull extends Base {
 		if ( isset( $columns['post_modified'] ) && ! isset( $columns['post_modified_gmt'] ) ) {
 			$post_data['post_modified_gmt'] = get_gmt_from_date( $post_data['post_modified'] );
 		}
-
 		return $post_data;
 	}
 
@@ -494,7 +502,6 @@ class Pull extends Base {
 				$post_data['tax_input'][ $taxonomy ] = $terms;
 			}
 		}
-
 		return $post_data;
 	}
 
@@ -559,7 +566,6 @@ class Pull extends Base {
 			'destination' => $destination,
 			'media'       => $media_items,
 		);
-
 		return $post_data;
 	}
 
@@ -579,6 +585,9 @@ class Pull extends Base {
 	protected function set_acf_field_value( $post_data ) {
 		// We are not sure of the incoming post_ID so let's get the current post ID
 		$post_id = $post_data['ID'];
+
+		// Initialize an array to store updated post data
+		$updated_post_data = $post_data;
 	
 		// Loop through the mapping data array
 		foreach ($this->mapping->data as $key => $value) {
@@ -734,8 +743,8 @@ class Pull extends Base {
 						}
 	
 					}
+					$updated_post_data = $this->maybe_append($value['field'], $field_value, $updated_post_data);
 					
-	
 				}else {
 					// If it's not a component, update the single ACF field normally
 					$field_data = array();
@@ -781,11 +790,17 @@ class Pull extends Base {
 						add_row($field_key, $key_value, $post_id);
 					}
 					update_field($field_key, $key_value_mapping, $post_id);
+
+					// lets do updated_post_data in a way that will work
+					$updated_post_data = $this->maybe_append($field_key, $key_value_mapping, $updated_post_data);
 					
 				}
 			}
 		}
-		return $post_data;
+
+		$updated_post_data['ID'] = $post_id;
+
+		return $updated_post_data;
 	}
 
 	
@@ -874,7 +889,7 @@ class Pull extends Base {
 		if ( 'text' === $this->element->type ) {
 			$terms = array_map( 'trim', explode( ',', sanitize_text_field( $this->element->value ) ) );
 		} elseif ( 'choice_checkbox' === $this->element->type ) {
-			$terms = json_decode($this->element->value);
+			$terms = (array) (is_string($this->element->value) ? json_decode($this->element->value) : $this->element->value);
 		} else {
 			$terms = (array) $this->element->value;
 		}
