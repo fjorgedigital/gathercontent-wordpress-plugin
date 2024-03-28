@@ -98,6 +98,7 @@ class Pull extends Base {
 	 * @return mixed Result of pull.
 	 */
 	protected function do_item( $id ) {
+		$roundTwo = false;
 
 		$this->check_mapping_data( $this->mapping );
 
@@ -107,6 +108,7 @@ class Pull extends Base {
 		$attachments = $tax_terms = false;
 
 		if ( $existing = \GatherContent\Importer\get_post_by_item_id( $id ) ) {
+			
 			// Check if item is up-to-date and if pull is necessary.
 			$meta       = \GatherContent\Importer\get_post_item_meta( $existing->ID );
 			$updated_at = isset( $meta['updated_at'] ) ? $meta['updated_at'] : 0;
@@ -132,8 +134,9 @@ class Pull extends Base {
 			$post_data = (array) $existing;
 		} else {
 			$post_data['ID'] = 0;
+			$roundTwo = true;
 		}
-
+		
 		$post_data = $this->map_gc_data_to_wp_data( $post_data );
 
 		if ( ! empty( $post_data['attachments'] ) ) {
@@ -145,13 +148,13 @@ class Pull extends Base {
 			$tax_terms = $post_data['tax_input'];
 			unset( $post_data['tax_input'] );
 		}
-
+		
 		$post_id = wp_insert_post( $post_data, 1 );
 
 		if ( is_wp_error( $post_id ) ) {
 			throw new Exception( $post_id->get_error_message(), __LINE__, $post_id->get_error_data() );
 		}
-
+		
 		$post_data['ID'] = $post_id;
 
 		// Store item ID reference to post-meta.
@@ -222,6 +225,12 @@ class Pull extends Base {
 			// Update the GC item status.
 			$this->api->set_item_status( $id, $status );
 		}
+		
+		// Call methods the second time to get post working for the acf fields. 
+		// We can later look for a beter approach to handle this but this works just fine.
+		if ($roundTwo == true){
+			$post_data = $this->set_acf_field_value( $post_data );
+		}
 
 		return $post_id;
 	}
@@ -257,7 +266,7 @@ class Pull extends Base {
 		if ( $this->should_map_hierarchy( $post_data['post_type'] ) && isset( $this->item->position ) ) {
 			$post_data['menu_order'] = absint( $this->item->position );
 		}
-
+		
 		$post_data = $this->loop_item_elements_and_map( $post_data );
 
 		// Put the backup data back.
@@ -270,7 +279,7 @@ class Pull extends Base {
 		if ( $this->should_update_title_with_item_name( $post_data ) ) {
 			$post_data['post_title'] = sanitize_text_field( $this->item->name );
 		}
-
+		
 		if ( ! empty( $post_data['ID'] ) ) {
 			$post_data = apply_filters( 'gc_update_wp_post_data', $post_data, $this );
 		} else {
@@ -366,7 +375,7 @@ class Pull extends Base {
 				}
 				
 				$componentProcessed = false; // Initialize flag outside the loop
-
+				
 				foreach ($fields_data as $field_data) {
 					$this->element = (object) $this->format_element_data($field_data, $component_uuid, true, $is_component_repeatable);
 					$uuid = $this->element->name;
@@ -404,7 +413,6 @@ class Pull extends Base {
 		if ( isset( $columns['post_modified'] ) && ! isset( $columns['post_modified_gmt'] ) ) {
 			$post_data['post_modified_gmt'] = get_gmt_from_date( $post_data['post_modified'] );
 		}
-
 		return $post_data;
 	}
 
@@ -494,7 +502,6 @@ class Pull extends Base {
 				$post_data['tax_input'][ $taxonomy ] = $terms;
 			}
 		}
-
 		return $post_data;
 	}
 
@@ -559,7 +566,6 @@ class Pull extends Base {
 			'destination' => $destination,
 			'media'       => $media_items,
 		);
-
 		return $post_data;
 	}
 
@@ -579,6 +585,9 @@ class Pull extends Base {
 	protected function set_acf_field_value( $post_data ) {
 		// We are not sure of the incoming post_ID so let's get the current post ID
 		$post_id = $post_data['ID'];
+
+		// Initialize an array to store updated post data
+		$updated_post_data = $post_data;
 	
 		// Loop through the mapping data array
 		foreach ($this->mapping->data as $key => $value) {
@@ -587,7 +596,7 @@ class Pull extends Base {
 
 			// Check if the item has type wp-type-acf. We are assuming some items managed to skip the case check in the set_post_values function so we double check here.
 			if (isset($value['type']) && $value['type'] === 'wp-type-acf') {
-	
+				
 				// Fetch the corresponding value from $this->item->content
 				$field_value = isset($this->item->content->{$content_key}) ? $this->item->content->{$content_key} : '';
 
@@ -599,13 +608,22 @@ class Pull extends Base {
 					foreach ($value['sub_fields'] as $sub_field_key) {
 						array_push($subfield_keys, $sub_field_key);
 					}
-					
 					// Let ACF add fields before rows. This order does some wonders and we need to revisit it.
 					update_field($value['field'], $component_row_data, $post_id);
 
 					$row_index = 0;
-					
+
 					foreach ($field_value as $subfield){
+						
+						$row_index ++;
+						if (!is_object($subfield)) {
+							// When components are not set to be repeatable in GC we may end up getting non objects subfields.
+							// Non objects like strings will fail for get_object_vars which expects objects
+							// In such a situation the page breaks since the upload import can't be completed
+							// We want to prevent the page break by just skipping import for such cases for now to give a better user experience
+							// TODO: If it allowed that components can be non repeatable then we will need to handle the string case, else components always needs to be set repeatable even if it is going to be just one.
+							continue;
+						}
 						// Check if the number of elements in $keys and $values match
 						if (count($subfield_keys) === count(get_object_vars($subfield))) {
 							// Combine the arrays if the counts match
@@ -615,15 +633,15 @@ class Pull extends Base {
 							// Skip the current iteration if component_row_data is not available
 							continue;
 						}
+						// Convert object to associative array
+						$component_row_data = json_decode(json_encode($component_row_data), true);
+
 						add_row($value['field'], $component_row_data, $post_id);
 
 						
 						$subfield_key_id = -1;
 
-						$row_index ++;
-
-						foreach ($subfield as $subsubfield){
-							
+						foreach ($subfield as $key => $subsubfield){
 							$subfield_key_id ++;
 							
 							if (is_array($subsubfield)){
@@ -638,68 +656,95 @@ class Pull extends Base {
 										array_push($children, $child['key']);
 									}
 								}
-						
+
+								if ($item['type'] && ($item['type'] === 'checkbox')){
+									$checkbox_labels = [];
+									// Extract labels from each stdClass object and add them to the $labels array for checkboxes
+									foreach ($subsubfield as $checkbox) {
+										$checkbox_labels[] = $checkbox->label;
+									}
+								}
+
 								foreach ($subsubfield as $subsubfield_field){
-									
-									// if(empty($subsubfield_field)){
-									// 	continue;
-									// }
 									
 									if ($item['type'] == 'image'){
 										$upload_dir = wp_upload_dir();
 										$image_url = $subsubfield_field->url;
 										$image_data = file_get_contents( $image_url );
 										$filename = $subsubfield_field->filename;
-
-										if ( wp_mkdir_p( $upload_dir['path'] ) ) {
-											$file = $upload_dir['path'] . '/' . $filename;
-										}else {
-											$file = $upload_dir['basedir'] . '/' . $filename;
-										}
-
-										file_put_contents( $file, $image_data );
-
-										$wp_filetype = wp_check_filetype( $filename, null );
-
-										$attachment = array(
-											'post_mime_type' => $wp_filetype['type'],
-											'post_title' => sanitize_file_name( $filename ),
-											'post_content' => '',
-											'post_status' => 'inherit'
-										);
-
-										$attach_id = wp_insert_attachment( $attachment, $file );
-										require_once( ABSPATH . 'wp-admin/includes/image.php' );
-
-										// Check if the attachment insertion was successful
-										if (!is_wp_error($attach_id)) {
-											// Generate attachment metadata
-											$attach_data = wp_generate_attachment_metadata($attach_id, $file);
-											
-											// Update attachment metadata
-											wp_update_attachment_metadata($attach_id, $attach_data);
-				
+									
+										// Check if the attachment already exists
+										global $wpdb;
+										$existing_attachment_id = $wpdb->get_var( $wpdb->prepare(
+											"SELECT ID FROM $wpdb->posts WHERE post_type = 'attachment' AND post_title = %s",
+											sanitize_file_name( $filename )
+										) );
+									
+										if ( $existing_attachment_id ) {
+											// If the attachment already exists, use its ID
+											$attach_id = $existing_attachment_id;
 										} else {
-											// Log an error or handle the case where attachment insertion fails
+											if ( wp_mkdir_p( $upload_dir['path'] ) ) {
+												$file = $upload_dir['path'] . '/' . $filename;
+											} else {
+												$file = $upload_dir['basedir'] . '/' . $filename;
+											}
+									
+											file_put_contents( $file, $image_data );
+									
+											$wp_filetype = wp_check_filetype( $filename, null );
+									
+											$attachment = array(
+												'post_mime_type' => $wp_filetype['type'],
+												'post_title' => sanitize_file_name( $filename ),
+												'post_content' => '',
+												'post_status' => 'inherit'
+											);
+									
+											$attach_id = wp_insert_attachment( $attachment, $file );
+											require_once( ABSPATH . 'wp-admin/includes/image.php' );
+									
+											// Check if the attachment insertion was successful
+											if (!is_wp_error($attach_id)) {
+												// Generate attachment metadata
+												$attach_data = wp_generate_attachment_metadata($attach_id, $file);
+									
+												// Update attachment metadata
+												wp_update_attachment_metadata($attach_id, $attach_data);
+									
+											} else {
+												// Log an error or handle the case where attachment insertion fails
+											}
 										}
 										
 										update_row($parent_key, $row_index, [$item_key => $attach_id],$post_id);
-
+										// Break out of the loop after processing the first image
+        								break;
 									}
+									
 
-									if ($item['type'] == 'repeater'){
+									if ($item['type'] === 'repeater'){
 										foreach ($children as $child_key){
 											// add_sub_row(['parent repeater', index, 'child repeater'], ['field_name' => $data], $post_id);
 											add_sub_row([$parent_key, $row_index, $item_key], [$child_key => $subsubfield_field], $post_id);
 										}
+									}
+
+									if ($item['type'] === 'checkbox'){										
+										update_row($parent_key, $row_index, [$item_key => $checkbox_labels],$post_id);
+									}
+
+									if ($item['type'] === 'radio'){
+										update_row($parent_key, $row_index, [$item_key => $subsubfield_field->label],$post_id);
+
 									}
 								}
 							}
 						}
 	
 					}
+					$updated_post_data = $this->maybe_append($value['field'], $field_value, $updated_post_data);
 					
-	
 				}else {
 					// If it's not a component, update the single ACF field normally
 					$field_data = array();
@@ -745,11 +790,17 @@ class Pull extends Base {
 						add_row($field_key, $key_value, $post_id);
 					}
 					update_field($field_key, $key_value_mapping, $post_id);
+
+					// lets do updated_post_data in a way that will work
+					$updated_post_data = $this->maybe_append($field_key, $key_value_mapping, $updated_post_data);
 					
 				}
 			}
 		}
-		return $post_data;
+
+		$updated_post_data['ID'] = $post_id;
+
+		return $updated_post_data;
 	}
 
 	
@@ -838,7 +889,7 @@ class Pull extends Base {
 		if ( 'text' === $this->element->type ) {
 			$terms = array_map( 'trim', explode( ',', sanitize_text_field( $this->element->value ) ) );
 		} elseif ( 'choice_checkbox' === $this->element->type ) {
-			$terms = json_decode($this->element->value);
+			$terms = (array) (is_string($this->element->value) ? json_decode($this->element->value) : $this->element->value);
 		} else {
 			$terms = (array) $this->element->value;
 		}
@@ -929,6 +980,7 @@ class Pull extends Base {
 				if ( self::attachment_is_image( $attach_id ) ) {
 					if ( 'featured_image' === $attachment['destination'] ) {
 						$featured_img_id = $attach_id;
+						break;
 					} elseif ( in_array( $attachment['destination'], array( 'content_image', 'excerpt_image' ), true ) ) {
 						$field = 'excerpt_image' === $attachment['destination'] ? 'post_excerpt' : 'post_content';
 

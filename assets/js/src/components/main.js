@@ -18,7 +18,8 @@ window.GatherContent = window.GatherContent || {};
 	main.init = function() {
 		$( document.body )
 			.on( 'click', '.gc-nav-tab-wrapper:not( .gc-nav-tab-wrapper-bb ) .nav-tab', main.changeTabs )
-			.on( 'click', '.gc-reveal-items', main.maybeReveal );
+			.on( 'click', '.gc-reveal-items', main.maybeReveal )
+			.on( 'click', '.gc-reveal-items-component', main.maybeRevealComponent );
 
 		if ( gc.queryargs.mapping ) {
 			var $menu = gc.$id( 'toplevel_page_gathercontent-import' );
@@ -49,6 +50,18 @@ window.GatherContent = window.GatherContent || {};
 		} else {
 			$this.removeClass( 'dashicons-arrow-down' ).addClass( 'dashicons-arrow-right' );
 			$this.next().addClass( 'hidden' );
+		}
+	};
+
+	main.maybeRevealComponent = function( evt ) {
+		var $this = $( this );
+		evt.preventDefault();
+		console.log('maybeRevealComponent');
+
+		if ( $this.hasClass( 'dashicons-arrow-right' ) ) {
+			$this.closest('table').find('.gc-component-row').addClass( 'hidden' );
+		} else {
+			$this.closest('table').find('.gc-component-row').removeClass( 'hidden' );
 		}
 	};
 

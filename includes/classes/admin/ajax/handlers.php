@@ -76,6 +76,7 @@ class Handlers extends Plugin_Base {
 		add_action( 'wp_ajax_gc_wp_filter_mappings', array( $this, 'gc_wp_filter_mappings_cb' ) );
 		add_action( 'wp_ajax_gc_save_mapping_id', array( $this, 'gc_save_mapping_id_cb' ) );
 		add_action( 'wp_ajax_gc_dismiss_notice', array( $this, 'gc_dismiss_notice_cb' ) );
+		add_action( 'wp_ajax_gc_component_subfields', array( $this, 'gc_component_subfields_cb' ) );
 	}
 
 	/**
@@ -402,6 +403,46 @@ class Handlers extends Plugin_Base {
 		}
 
 		wp_send_json_error();
+	}
+
+	/**
+	 * Ajax callback when getting Component subfields for the mapping UI
+	 *
+	 * @since  3.2.20
+	 *
+	 * @return void
+	 */
+	public function gc_component_subfields_cb() {
+		if ( ! $this->_post_val( 'subfields_data' ) ) {
+			wp_send_json_error("one");
+		}
+		$data = $this->_post_val( 'subfields_data' );
+
+		// If ACF Field group
+		if ( $data['name'] && str_contains($data['name'],"group") ){
+			$field_group = acf_get_fields($data['name']);
+			// If Repeater with sub fields
+			if($field_group){
+				$success_data = array(
+					'field_data' => $field_group,
+				);
+				wp_send_json_success($success_data);
+			}
+		}
+		// If field, get sub fields
+		elseif ( $data['name'] && str_contains($data['name'],"field") ){
+			$field_parent = get_field_object($data['name']);
+			// If Repeater with sub fields
+			if($field_parent['sub_fields']){
+				$success_data = array(
+					'field_data' => $field_parent['sub_fields'],
+				);
+				wp_send_json_success($success_data);
+			}
+		}
+		
+		// If error
+		wp_send_json_error("two");
 	}
 
 	/*
