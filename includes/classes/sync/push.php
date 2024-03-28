@@ -403,7 +403,7 @@ class Push extends Base {
 			}
 		}
 
-		// error_log(print_r($this->item_config, true));
+		error_log(print_r($this->item_config, true));
 		$this->remove_unknowns();
 		
 		return $this->item_config;
@@ -933,21 +933,40 @@ class Push extends Base {
 	}
 	
 	protected function processChoiceCheckboxField($field_value) {
-		// Handle choice checkbox field type
-		$jsonValues = []; // Array to store JSON encoded values
-		
-		// Check if the field value is an array
-		if (is_array($field_value)) {
-			foreach ($field_value as $item) {
-				// Encode each item (selected choices) as JSON
-				$jsonValues[] = json_encode($item);
+		$options = $this->element->options; // Get the options
+		$result_options = []; // Array to store the result for options
+		$result_value = []; // Array to store the result for value
+	
+		// Iterate through each item in the field value array
+		foreach ($field_value as $value) {
+			$selected_options = []; // Array to store options for this value
+			$selected_value = []; // Array to store value for this value
+	
+			// Iterate through each option and set 'selected' property accordingly
+			foreach ($options as $option) {
+				$selected_option = clone $option; // Clone the option object
+	
+				// Set 'selected' property based on whether the label matches any value in the current $field_value item
+				$selected_option->selected = in_array($option->label, $value) ? 1 : 0;
+	
+				// Add the modified option to the array
+				$selected_options[] = $selected_option;
+	
+				// If the label matches any value in the current $field_value item, store the value details
+				if (in_array($option->label, $value)) {
+					$selected_value[] = ['id' => $option->name, 'label' => $option->label];
+				}
 			}
+	
+			// Add the array of options for this value to the result
+			$result_options[] = $selected_options;
+	
+			// Add the value details to the result
+			$result_value[] = $selected_value;
 		}
 		
-		// Return the JSON encoded values
-		return '[' . implode(',', $jsonValues) . ']';
+		return ['options' => $result_options, 'value' => $result_value]; // Return both results
 	}
-
 	
 	protected function processChoiceRadioField($field_value) {
 		$options = $this->element->options; // Get the options
