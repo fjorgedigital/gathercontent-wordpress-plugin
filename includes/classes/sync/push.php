@@ -610,7 +610,6 @@ class Push extends Base {
 			: array();
 
 		$updated = $this->set_taxonomy_field_value_from_names( $term_names );
-
 		return apply_filters( 'gc_config_taxonomy_field_value_updated', $updated, $taxonomy, $terms, $this );
 	}
 
@@ -744,7 +743,7 @@ class Push extends Base {
 	
 		// Fetch the ACF field group using the group key
 		$field_group = get_field($group_key, $post_id);
-	
+		
 		$el = $this->element;
 		$el_value = $this->element->value; 
 		if (is_object($el) && property_exists($el, 'component_uuid')) {
@@ -774,7 +773,7 @@ class Push extends Base {
 				$new_group = array_combine($componentFieldsKeys, $group);
 				$groupData[] = $new_group;
 			}
-			
+
 			// Define a mapping between field types and processing functions
 			$fieldTypeProcessors = [
 				'text' => 'processTextField',
@@ -810,15 +809,31 @@ class Push extends Base {
 						break; // Stop iterating once the field with the matching UUID is found
 					}
 				}
-
+				
 				if (isset($fieldTypeProcessors[$field_type])) {
-					// Call the corresponding processing function for each field UUID
-					$processorFunction = $fieldTypeProcessors[$field_type];
-					$jsonValue = $this->$processorFunction($field_values);
+					if ($this->element->name == $field_uuid){
+						// Call the corresponding processing function for each field UUID
+						$processorFunction = $fieldTypeProcessors[$field_type];
+						$processorResult = $this->$processorFunction($field_values);
+
+						// Check if the result is an array with 'options' and 'value'
+						if (is_array($processorResult) && array_key_exists('options', $processorResult) && array_key_exists('value', $processorResult)) {
+							// If the result contains both 'options' and 'value', extract them
+							$jsonOptions = $processorResult['options'];
+							$jsonValue = $processorResult['value'];
+						} else {
+							// If the result is not an array with 'options' and 'value', assume it's just the value
+							$jsonValue = $processorResult;
+						}
+					}
+					
 
 					// Assign the processed value to the corresponding element
 					if (($this->element->name == $field_uuid) && ($this->element->value !=  $jsonValue)){
 						$this->element->value = $jsonValue;
+						if ($jsonOptions){
+							$this->element->options = $jsonOptions;
+						}
 						$updated = true;
 					}
 				} else {
@@ -933,18 +948,44 @@ class Push extends Base {
 		return '[' . implode(',', $jsonValues) . ']';
 	}
 
+	
 	protected function processChoiceRadioField($field_value) {
-		$jsonValues = []; // Array to store JSON encoded values
-	
-		// Loop through each item in the field value array
-		foreach ($field_value as $item) {
-			// Encode each item and add it to the JSON values array
-			$jsonValues[] = '"' . addslashes($item) . '"';
+		$options = $this->element->options; // Get the options
+		$result_options = []; // Array to store the result for options
+		$result_value = []; // Array to store the result for value
+		
+		// Iterate through each item in the field value array
+		foreach ($field_value as $value) {
+			$selected_options = []; // Array to store options for this value
+			$selected_value = []; // Array to store value for this value
+			
+			// Iterate through each option and set 'selected' property accordingly
+			foreach ($options as $option) {
+				$selected_option = clone $option; // Clone the option object
+				
+				// Set 'selected' property based on whether the label matches the value
+				$selected_option->selected = ($option->label === $value) ? 1 : 0;
+				
+				// Add the modified option to the array
+				$selected_options[] = $selected_option;
+				
+				// If the label matches the value, store the value details
+				if ($option->label === $value) {
+					$selected_value[] = ['id' => $option->name, 'label' => $option->label];
+				}
+			}
+			
+			// Add the array of options for this value to the result
+			$result_options[] = $selected_options;
+			
+			// Add the value details to the result
+			$result_value[] = $selected_value;
 		}
-	
-		// Return the JSON encoded values as a JSON array
-		return '[' . implode(',', $jsonValues) . ']';
+		
+		return ['options' => $result_options, 'value' => $result_value]; // Return both results
 	}
+	
+	
 	
 
 	/**
@@ -990,7 +1031,6 @@ class Push extends Base {
 		}
 
 		$this->element->value = $values;
-
 		$post_options = wp_json_encode( $this->element->value );
 
 		// @codingStandardsIgnoreStart
