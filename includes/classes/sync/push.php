@@ -774,7 +774,7 @@ class Push extends Base {
 				$new_group = array_combine($componentFieldsKeys, $group);
 				$groupData[] = $new_group;
 			}
-	
+			
 			// Define a mapping between field types and processing functions
 			$fieldTypeProcessors = [
 				'text' => 'processTextField',
@@ -784,49 +784,48 @@ class Push extends Base {
 				// Add more field types and corresponding processing functions as needed
 			];
 	
+			// Initialize an associative array to store grouped items
+			$groupedData = [];
+			// Iterate through each group data
 			foreach ($groupData as $dataInstance) {
-				// Initialize an associative array to store grouped items
-				$groupedData = [];
-				// Iterate through each group data
-				foreach ($groupData as $dataInstance) {
-					// Iterate through each field UUID and its corresponding value
-					foreach ($dataInstance as $field_uuid => $field_value) {
-						// Check if the field UUID exists as a key in the grouped data array
-						if (!isset($groupedData[$field_uuid])) {
-							// If the key doesn't exist, initialize it as an empty array
-							$groupedData[$field_uuid] = [];
-						}
-						// Append the field value to the corresponding key in the grouped data array
-						$groupedData[$field_uuid][] = $field_value;
+				// Iterate through each field UUID and its corresponding value
+				foreach ($dataInstance as $field_uuid => $field_value) {
+					// Check if the field UUID exists as a key in the grouped data array
+					if (!isset($groupedData[$field_uuid])) {
+						// If the key doesn't exist, initialize it as an empty array
+						$groupedData[$field_uuid] = [];
 					}
-				}
-	
-				// Iterate through each field type and its corresponding field UUIDs
-				foreach ($groupedData as $field_uuid => $field_values) {
-					// Process field values based on field type
-					$field_type = null;
-					foreach ($componentFields as $componentField) {
-						if ($componentField->uuid === $field_uuid) {
-							$field_type = $componentField->field_type;
-							break; // Stop iterating once the field with the matching UUID is found
-						}
-					}
-	
-					if (isset($fieldTypeProcessors[$field_type])) {
-						// Call the corresponding processing function for each field UUID
-						$processorFunction = $fieldTypeProcessors[$field_type];
-						$jsonValue = $this->$processorFunction($field_values);
-					
-						// Assign the processed value to the corresponding element
-						if (($this->element->name == $field_uuid) && ($this->element->value !=  $jsonValue)){
-							$this->element->value = $jsonValue;
-							$updated = true;
-						}
-					} else {
-						// Handle unknown field types or skip
-					}
+					// Append the field value to the corresponding key in the grouped data array
+					$groupedData[$field_uuid][] = $field_value;
 				}
 			}
+			
+			// Iterate through each field type and its corresponding field UUIDs
+			foreach ($groupedData as $field_uuid => $field_values) {
+				// Process field values based on field type
+				$field_type = null;
+				foreach ($componentFields as $componentField) {
+					if ($componentField->uuid === $field_uuid) {
+						$field_type = $componentField->field_type;
+						break; // Stop iterating once the field with the matching UUID is found
+					}
+				}
+
+				if (isset($fieldTypeProcessors[$field_type])) {
+					// Call the corresponding processing function for each field UUID
+					$processorFunction = $fieldTypeProcessors[$field_type];
+					$jsonValue = $this->$processorFunction($field_values);
+
+					// Assign the processed value to the corresponding element
+					if (($this->element->name == $field_uuid) && ($this->element->value !=  $jsonValue)){
+						$this->element->value = $jsonValue;
+						$updated = true;
+					}
+				} else {
+					// Handle unknown field types or skip
+				}
+			}
+			
 		}else {
 			$outputArray = array();
 			foreach ($field_group as $item) {
@@ -843,7 +842,7 @@ class Push extends Base {
 			}
 		}
 		return $updated;
-	}
+	}	
 	
 	protected function processTextField($field_value) {
 		// Handle text field type
@@ -859,12 +858,14 @@ class Push extends Base {
 					foreach ($item as $value) {
 						if (!is_array($value)) {
 							// If the value is not an array, encode it directly
-							$encodedValues[] = '"' . addslashes($value) . '"';
+							$trimmedValue = rtrim($value, "\n\r");
+							$encodedValues[] = '"' . addslashes($trimmedValue) . '"';
 						} else {
 							// If the value is an array, encode its elements separately
 							$encodedInnerValues = [];
 							foreach ($value as $innerValue) {
-								$encodedInnerValues[] = '"' . addslashes($innerValue) . '"';
+								$trimmedValue = rtrim($innerValue, "\n\r");
+								$encodedInnerValues[] = '"' . addslashes($trimmedValue) . '"';
 							}
 							// Encode the inner array as a JSON array
 							$encodedValues[] = implode(',', $encodedInnerValues);
@@ -874,13 +875,17 @@ class Push extends Base {
 					$jsonValues[] = '[' . implode(',', $encodedValues) . ']';
 				} else {
 					// If the item is not an array, encode it directly
-					$jsonValues[] = '"' . addslashes($item) . '"';
+					$trimmedValue = rtrim($item, "\n\r");
+					$jsonValues[] = '"' . addslashes($trimmedValue) . '"';
 				}
 			}
+			
 		} else {
 			// If the field value is not an array, encode it directly
-			$jsonValues[] = '"' . addslashes($field_value) . '"';
+			$trimmedValue = rtrim($field_value, "\n\r");
+			$jsonValues[] = '"' . addslashes($trimmedValue) . '"';
 		}
+		
 		// Return the JSON encoded values
 		return '[' . implode(',', $jsonValues) . ']';
 	}
