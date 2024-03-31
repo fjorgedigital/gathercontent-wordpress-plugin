@@ -147,6 +147,7 @@ ul.gc-radio-desc li, ul.gc-reveal-items-list li {
 		option[value="wp-type-acf"]{
 			display:none;
 		}
+		&.gc-component,
 		&.type-repeater{
 			option[value="wp-type-acf"]{
 				display:block;

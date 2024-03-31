@@ -12,7 +12,7 @@
 	Standard TD Items - Lvl 1
 ***********************************************/ ?>
 <?php // LEFT COLUMN - GC DATA ?>
-<td <# if (data.typeName === 'component') { #> class="gc-component-disabled column"<# } #>>
+<td <# if (data.typeName === 'component') { #> class="gc-component gc-component-disabled column"<# } #>>
 	<# if ( ( data.limit && data.limit_type ) || data.instructions || data.typeName ) { #>
 		<?php // echo '<pre>{{ JSON.stringify(data, null, 2) }}</pre>' ?>
 		<# if ( ( data.is_repeatable ) ) { #>
@@ -38,7 +38,7 @@
 </td>
 
 <?php // RIGHT COLUMN - WP DATA FIELDS ?>
-<td id="<# if (data.typeName !== 'component') { #>{{data.name}}<# } #>" class="<# if (data.typeName === 'component') { #>gc-component-disabled column<# } #> <# if ( data.is_repeatable ) { #>type-repeater<# } #>">
+<td id="<# if (data.typeName !== 'component') { #>{{data.name}}<# } #>" class="<# if (data.typeName === 'component') { #>gc-component gc-component-disabled column<# } #> <# if ( data.is_repeatable ) { #>type-repeater<# } #>">
 	<select class="wp-type-select type-select" name="<?php $this->output( 'option_base' ); ?>[mapping][{{ data.name }}][type]">
 		<option <# if ( '' === data.field_type ) { #>selected="selected"<# } #> value=""><?php _e( 'Unused', 'gathercontent-import' ); ?></option>
 		<?php do_action( 'gathercontent_field_type_option_underscore_template', $this ); ?>
