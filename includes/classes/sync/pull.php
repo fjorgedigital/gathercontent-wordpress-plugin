@@ -82,7 +82,6 @@ class Pull extends Base {
 		} catch ( \Exception $e ) {
 			$result = new WP_Error( 'gc_pull_item_fail_' . $e->getCode(), $e->getMessage(), $e->get_data() );
 		}
-
 		return $result;
 	}
 
@@ -413,6 +412,7 @@ class Pull extends Base {
 		if ( isset( $columns['post_modified'] ) && ! isset( $columns['post_modified_gmt'] ) ) {
 			$post_data['post_modified_gmt'] = get_gmt_from_date( $post_data['post_modified'] );
 		}
+
 		return $post_data;
 	}
 
@@ -599,7 +599,7 @@ class Pull extends Base {
 				
 				// Fetch the corresponding value from $this->item->content
 				$field_value = isset($this->item->content->{$content_key}) ? $this->item->content->{$content_key} : '';
-
+				
 				// Check if item has subfields. If it has then it is a component from GC
 				if (isset($value['sub_fields'])) {
 	
@@ -608,8 +608,11 @@ class Pull extends Base {
 					foreach ($value['sub_fields'] as $sub_field_key) {
 						array_push($subfield_keys, $sub_field_key);
 					}
+					// Let's ensure the repeater field is empty before adding rows
+					delete_field($value['field'], $post_id);
+
 					// Let ACF add fields before rows. This order does some wonders and we need to revisit it.
-					update_field($value['field'], $component_row_data, $post_id);
+					// update_field($value['field'], $component_row_data, $post_id);
 
 					$row_index = 0;
 
@@ -635,18 +638,17 @@ class Pull extends Base {
 						}
 						// Convert object to associative array
 						$component_row_data = json_decode(json_encode($component_row_data), true);
-
 						add_row($value['field'], $component_row_data, $post_id);
-
 						
 						$subfield_key_id = -1;
 
 						foreach ($subfield as $key => $subsubfield){
 							$subfield_key_id ++;
-							
+							$item_key = $subfield_keys[$subfield_key_id];
+							$item = get_field_object($item_key);
+
 							if (is_array($subsubfield)){
-								$item_key = $subfield_keys[$subfield_key_id];
-								$item = get_field_object($item_key);
+								
 								if ($item['parent']){
 									$parent_key = $item['parent'];
 								}
@@ -664,7 +666,7 @@ class Pull extends Base {
 										$checkbox_labels[] = $checkbox->label;
 									}
 								}
-
+								
 								foreach ($subsubfield as $subsubfield_field){
 									
 									if ($item['type'] == 'image'){
@@ -738,11 +740,13 @@ class Pull extends Base {
 										update_row($parent_key, $row_index, [$item_key => $subsubfield_field->label],$post_id);
 
 									}
+
 								}
 							}
 						}
 	
 					}
+
 					$updated_post_data = $this->maybe_append($value['field'], $field_value, $updated_post_data);
 					
 				}else {
@@ -795,11 +799,12 @@ class Pull extends Base {
 					$updated_post_data = $this->maybe_append($field_key, $key_value_mapping, $updated_post_data);
 					
 				}
+
 			}
 		}
 
 		$updated_post_data['ID'] = $post_id;
-
+	
 		return $updated_post_data;
 	}
 
