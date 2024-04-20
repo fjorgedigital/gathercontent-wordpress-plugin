@@ -40,6 +40,10 @@ window.GatherContent = window.GatherContent || {};
 		gc.$id( $( this ).attr( 'href' ).substring(1) ).removeClass( 'hidden' );
 	};
 
+	/**
+	 * Accordion Toggle > Template Mapping: Field Description
+	 * - Opens the drawer for a single field's description
+	 */
 	main.maybeReveal = function( evt ) {
 		var $this = $( this );
 		evt.preventDefault();
@@ -53,10 +57,13 @@ window.GatherContent = window.GatherContent || {};
 		}
 	};
 
+	/**
+	 * Accordion Toggle > Template Mapping: Component Fields
+	 * - Opens the drawer for the component's description and subfields
+	 */
 	main.maybeRevealComponent = function( evt ) {
 		var $this = $( this );
 		evt.preventDefault();
-		console.log('maybeRevealComponent');
 
 		if ( $this.hasClass( 'dashicons-arrow-right' ) ) {
 			$this.closest('table').find('.gc-component-row').addClass( 'hidden' );
