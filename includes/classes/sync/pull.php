@@ -225,7 +225,12 @@ class Pull extends Base {
 			$this->api->set_item_status( $id, $status );
 		}
 		
-		// Call methods the second time to get post working for the acf fields. 
+		// Call methods the second time to get post working for the acf fields.
+		// Componentes are attached to posts, meaning we need the post ID to attach the component.
+		// When we first create a post (not exisiting), we set the ID = 0 before we later create the wp_post and then update the post_ID
+		// In set_acf_field_value, we require the correct post ID to be able to attach the component (ACF field) to the post which gets updated to the correct one later after the post is created.
+		// Hence the need to run it the second time when we have the correct ID.
+		// If we do not do it this way, it is going to look for the post with ID = 0 always to attach the component to and that will be wrong.
 		// We can later look for a beter approach to handle this but this works just fine.
 		if ($roundTwo == true){
 			$post_data = $this->set_acf_field_value( $post_data );
