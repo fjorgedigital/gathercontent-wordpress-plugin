@@ -337,7 +337,6 @@ class Push extends Base {
 					$is_component_repeatable = ( is_object( $metadata ) && isset( $metadata->repeatable ) ) ? $metadata->repeatable->isRepeatable : false;
 				}
 
-				$componentProcessed = false;
 				foreach ( $fields_data as $field_data ) {
 
 					$this->element = (object) $this->format_element_data( $field_data, $component_uuid, false, $is_component_repeatable );
@@ -347,10 +346,9 @@ class Push extends Base {
 					}
 
 					$uuid = $this->element->name;
-					if ( $component_uuid && !$componentProcessed) {
+					if ( $component_uuid ) {
 						$this->element->component_uuid = $component_uuid;
 						$uuid = $component_uuid . '_component_' . $component_uuid;
-						// $componentProcessed = true;
 					}
 
 					$source      = $this->mapping->data( $uuid );
