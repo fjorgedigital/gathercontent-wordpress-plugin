@@ -413,9 +413,11 @@ class Handlers extends Plugin_Base {
 	 * @return void
 	 */
 	public function gc_component_subfields_cb() {
+		// If data not provided from FE, stop and return error
 		if ( ! $this->_post_val( 'subfields_data' ) ) {
-			wp_send_json_error("one");
+			wp_send_json_error();
 		}
+		// Parse data from JS
 		$data = $this->_post_val( 'subfields_data' );
 
 		// If ACF Field group
@@ -441,8 +443,8 @@ class Handlers extends Plugin_Base {
 			}
 		}
 		
-		// If error
-		wp_send_json_error("two");
+		// If success conditions were not met above, complete function with error status
+		wp_send_json_error();
 	}
 
 	/*

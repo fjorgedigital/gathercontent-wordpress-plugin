@@ -188,20 +188,6 @@ class Push extends Base {
 					$config->content->$component_uuid = (object) array();
 				}
 
-				// if(is_array($config->content->$component_uuid) && is_array(json_decode($updated_element->value))){
-				// 	// it's a repeatable component so handle differently
-				// 	$decoded_value = json_decode($updated_element->value);
-				// 	$i = 0;
-				// 	foreach($decoded_value as $value) {
-				// 		if(isset($config->content->$component_uuid[$i])){
-				// 			$config->content->$component_uuid[$i]->$element_id = $value;
-				// 		}
-				// 		$i++;
-				// 	}
-				// } else {
-				// 	$config->content->$component_uuid->$element_id = $updated_element->value;
-				// }
-
 				if (is_array($config->content->$component_uuid)) {
 					if (is_array($updated_element->value)) {
 						// Directly use the array
@@ -351,7 +337,6 @@ class Push extends Base {
 					$is_component_repeatable = ( is_object( $metadata ) && isset( $metadata->repeatable ) ) ? $metadata->repeatable->isRepeatable : false;
 				}
 
-				$componentProcessed = false;
 				foreach ( $fields_data as $field_data ) {
 
 					$this->element = (object) $this->format_element_data( $field_data, $component_uuid, false, $is_component_repeatable );
@@ -361,10 +346,9 @@ class Push extends Base {
 					}
 
 					$uuid = $this->element->name;
-					if ( $component_uuid && !$componentProcessed) {
+					if ( $component_uuid ) {
 						$this->element->component_uuid = $component_uuid;
 						$uuid = $component_uuid . '_component_' . $component_uuid;
-						// $componentProcessed = true;
 					}
 
 					$source      = $this->mapping->data( $uuid );
@@ -403,9 +387,9 @@ class Push extends Base {
 			}
 		}
 
-		error_log(print_r($this->item_config, true));
+
 		$this->remove_unknowns();
-		
+
 		return $this->item_config;
 	}
 
@@ -743,7 +727,7 @@ class Push extends Base {
 	
 		// Fetch the ACF field group using the group key
 		$field_group = get_field($group_key, $post_id);
-		
+
 		$el = $this->element;
 		$el_value = $this->element->value; 
 		if (is_object($el) && property_exists($el, 'component_uuid')) {
@@ -773,6 +757,8 @@ class Push extends Base {
 				$new_group = array_combine($componentFieldsKeys, $group);
 				$groupData[] = $new_group;
 			}
+			
+
 
 			// Define a mapping between field types and processing functions
 			$fieldTypeProcessors = [
@@ -840,7 +826,6 @@ class Push extends Base {
 					// Handle unknown field types or skip
 				}
 			}
-			
 		}else {
 			$outputArray = array();
 			foreach ($field_group as $item) {
@@ -856,6 +841,7 @@ class Push extends Base {
 				$updated = true;
 			}
 		}
+		
 		return $updated;
 	}	
 	

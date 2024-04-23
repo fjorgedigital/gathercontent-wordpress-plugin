@@ -1,5 +1,5 @@
 /**
- * GatherContent Plugin - v3.2.19 - 2024-03-18
+ * GatherContent Plugin - v3.2.19 - 2024-04-20
  * http://www.gathercontent.com
  *
  * Copyright (c) 2024 GatherContent
@@ -415,7 +415,6 @@ module.exports = function (app, _meta_keys) {
 
 		initialize: function initialize() {
 			this.listenTo(this.model, 'change:field_type', this.render);
-			console.log("this.model: ", this.model);
 
 			// Initiate the metaKeys collection.
 			this.metaKeys = new (app.collections.base.extend({
@@ -442,10 +441,16 @@ module.exports = function (app, _meta_keys) {
 			}))(_meta_keys);
 		},
 
+		/**
+   * 1st Dropdown - event change
+   */
 		changeType: function changeType(evt) {
 			this.model.set('field_type', jQuery(evt.target).val());
 		},
 
+		/**
+   * 2nd Dropdown - event change
+   */
 		changeValue: function changeValue(evt) {
 			var value = jQuery(evt.target).val();
 			var type = this.model.get('type');
@@ -471,6 +476,9 @@ module.exports = function (app, _meta_keys) {
 			}
 		},
 
+		/**
+   * 3rd Dropdown - event change
+   */
 		changeField: function changeField(evt) {
 			var value = jQuery(evt.target).val();
 			var component = jQuery(evt.target).closest('.component-table-wrapper').attr('id');
@@ -486,6 +494,9 @@ module.exports = function (app, _meta_keys) {
 			}
 		},
 
+		/**
+   * LVL 2: Subfield Dropdown - event change
+   */
 		changeSubfield: function changeSubfield(evt) {
 			var value = jQuery(evt.target).val();
 			var index = jQuery(evt.target).attr('data-index');
@@ -497,11 +508,12 @@ module.exports = function (app, _meta_keys) {
 			this.model.set('field_subfields', subfield_data);
 		},
 
+		/**
+   * Helper function: build option html elements for AJAX funtions
+   */
 		optionBuilder: function optionBuilder(data) {
-			console.log('optionBuilder');
 			var options_html = "<option value=''>Unused</option>";
 			jQuery.each(data.field_data, function (i, field) {
-				// console.log('data: ',data);
 				options_html += "<option class='hidden' value='" + field.key + "' data-type='" + field.type + "'>" + field.label + "</option>";
 			});
 			return options_html;
@@ -509,6 +521,8 @@ module.exports = function (app, _meta_keys) {
 
 		/**
    * AJAX Update: "Field" - ACF Field group's field
+   * - "Field" refers to the 3rd dropdown of the component fields top level
+   * - After selecting the field group from the 2nd dropdown, call WP_AJAX to get the relevent fields from the group selected and populate the 3rd dropdown (aka "Field")
    * 
    * @param {string} component - ID without the "#" of the component parent row
    * @param {string} field_name - Parent field name/key of the sub fields, should be a repeater
@@ -517,9 +531,6 @@ module.exports = function (app, _meta_keys) {
 		updateAjax_Field: function updateAjax_Field(component, field_name, saved_fields) {
 			saved_fields = typeof saved_fields !== 'undefined' ? saved_fields : "";
 			var $this = this;
-			// console.log('updateAjax_Field');
-			// console.log('field_name: ',field_name);
-			// console.log('saved_fields: ',saved_fields);
 
 			// Update UI
 			jQuery('#' + component + ' .wp-type-field-select ~ span.select2').addClass('ajax-disabled');
@@ -532,7 +543,6 @@ module.exports = function (app, _meta_keys) {
 			}, function (response) {
 				// Update UI
 				jQuery('#' + component + ' .wp-type-field-select ~ span.select2').removeClass('ajax-disabled');
-				console.log('RESPONSE: ', response);
 
 				// SUCCESS
 				if (response.success) {
@@ -551,13 +561,15 @@ module.exports = function (app, _meta_keys) {
 				}
 				// ERROR
 				else {
-						console.log('AJAX ERROR!');
+						window.alert('Please refresh and try again. If the issue persists, reach out to support');
 					}
 			});
 		},
 
 		/**
-   * AJAX Update: "Field" - ACF Field group's repeater subfields
+   * AJAX Update: "Subfields" - ACF Field group's repeater subfields
+   * - "Subfields" are in the component accordion
+   * - After selecting the field group from the 3rd dropdown, call WP_AJAX to get the relevent subfields from the ACF Repeater selected and populate the subfields
    * 
    * @param {string} component - ID without the "#" of the component parent row
    * @param {string} field_name - Parent field name/key of the sub fields, should be a repeater
@@ -566,8 +578,6 @@ module.exports = function (app, _meta_keys) {
 		updateAjax_ComponentSubfields: function updateAjax_ComponentSubfields(component, field_name, saved_fields) {
 			saved_fields = typeof saved_fields !== 'undefined' ? saved_fields : {};
 			var $this = this;
-			// console.log('updateSubFields: ',field_name);
-			// console.log('saved_fields: ',saved_fields);
 
 			// Update UI
 			jQuery('#' + component + ' .component-table-inner').find('select').addClass('ajax-disabled');
@@ -580,7 +590,6 @@ module.exports = function (app, _meta_keys) {
 			}, function (response) {
 				// Update UI
 				jQuery('#' + component + ' .component-table-inner').find('select').removeClass('ajax-disabled');
-				console.log('RESPONSE: ', response);
 
 				// SUCCESS
 				if (response.success) {
@@ -603,19 +612,19 @@ module.exports = function (app, _meta_keys) {
 				}
 				// ERROR
 				else {
-						console.log('AJAX ERROR!');
+						window.alert('Please refresh and try again. If the issue persists, reach out to support');
 					}
 			});
 		},
 
+		/**
+   * Init
+   */
 		render: function render() {
 			var val = this.model.get('field_value');
 			var valField = this.model.get('field_field');
 			var valSubfields = this.model.get('field_subfields');
 			var component;
-			// console.log("render - val: ",val);
-			// console.log("render - valField: ",valField);
-			// console.log("render - valSubfields: ",valSubfields);
 
 			if (val && !this.metaKeys.getByValue(val)) {
 				this.metaKeys.add({ value: val });
