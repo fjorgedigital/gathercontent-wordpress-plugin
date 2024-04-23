@@ -1,8 +1,8 @@
 /**
- * GatherContent Plugin - v3.1.13 - 2022-01-31
+ * GatherContent Plugin - v3.2.19 - 2024-04-20
  * http://www.gathercontent.com
  *
- * Copyright (c) 2022 GatherContent
+ * Copyright (c) 2024 GatherContent
  * Licensed under the GPLv2 license.
  */
 
@@ -45,7 +45,7 @@ window.GatherContent = window.GatherContent || {};
 	var main = gc.main = {};
 
 	main.init = function () {
-		$(document.body).on('click', '.gc-nav-tab-wrapper:not( .gc-nav-tab-wrapper-bb ) .nav-tab', main.changeTabs).on('click', '.gc-reveal-items', main.maybeReveal);
+		$(document.body).on('click', '.gc-nav-tab-wrapper:not( .gc-nav-tab-wrapper-bb ) .nav-tab', main.changeTabs).on('click', '.gc-reveal-items', main.maybeReveal).on('click', '.gc-reveal-items-component', main.maybeRevealComponent);
 
 		if (gc.queryargs.mapping) {
 			var $menu = gc.$id('toplevel_page_gathercontent-import');
@@ -66,6 +66,10 @@ window.GatherContent = window.GatherContent || {};
 		gc.$id($(this).attr('href').substring(1)).removeClass('hidden');
 	};
 
+	/**
+  * Accordion Toggle > Template Mapping: Field Description
+  * - Opens the drawer for a single field's description
+  */
 	main.maybeReveal = function (evt) {
 		var $this = $(this);
 		evt.preventDefault();
@@ -76,6 +80,21 @@ window.GatherContent = window.GatherContent || {};
 		} else {
 			$this.removeClass('dashicons-arrow-down').addClass('dashicons-arrow-right');
 			$this.next().addClass('hidden');
+		}
+	};
+
+	/**
+  * Accordion Toggle > Template Mapping: Component Fields
+  * - Opens the drawer for the component's description and subfields
+  */
+	main.maybeRevealComponent = function (evt) {
+		var $this = $(this);
+		evt.preventDefault();
+
+		if ($this.hasClass('dashicons-arrow-right')) {
+			$this.closest('table').find('.gc-component-row').addClass('hidden');
+		} else {
+			$this.closest('table').find('.gc-component-row').removeClass('hidden');
 		}
 	};
 

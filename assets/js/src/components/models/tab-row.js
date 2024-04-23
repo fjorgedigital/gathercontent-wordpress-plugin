@@ -9,6 +9,8 @@ module.exports = function( app, gc ) {
 			typeName    : '',
 			post_type   : 'post',
 			field_value : false,
+			field_field : false,
+			field_subfields : false,
 			expanded    : false,
 			required    : false,
 			value       : '',

@@ -118,6 +118,23 @@ ul.gc-radio-desc li, ul.gc-reveal-items-list li {
 		margin-top: 0;
 	}
 
+	table{
+		thead,
+		tbody{
+			& > tr{
+				& > th,
+				& > td{
+					&:first-child{
+						width:40%;
+					}
+					&:last-child{
+						width:60%;
+					}
+				}
+			}
+		}
+	}
+
 	td {
 		border-bottom: 1px solid #ccc;
 		padding: .5em 1em;
@@ -127,6 +144,77 @@ ul.gc-radio-desc li, ul.gc-reveal-items-list li {
 		// &:last-child {
 		// 	text-align: right;
 		// }
+		option[value="wp-type-acf"]{
+			display:none;
+		}
+		&.gc-component,
+		&.type-repeater{
+			option[value="wp-type-acf"]{
+				display:block;
+			}
+		}
+	}
+
+	/****** COMPONENT TABLE ******/
+	.component-td{
+		padding-left:0;
+		padding-right:0;
+		border:none;
+	}
+	.component-td-wrapper{
+		border-bottom: 1px solid #ccc;
+	}
+	.component-table-wrapper{
+		width:100%;
+		tbody > tr > td{
+			border:none;
+		}
+	}
+	.component-table-inner{
+		border-collapse:collapse;
+		width:100%;
+		td{
+			border:none;
+			&:first-child{
+				padding-left:2.5em;
+			}
+		}
+
+		tr{
+			// Show / Hide ACF field types
+			&.text{
+				option[data-type="text"],
+				option[data-type="textarea"],
+				option[data-type="wysiwyg"]{ 
+					display:block;
+				}
+			}
+			&.attachment{
+				option[data-type="gallery"],
+				option[data-type="image"]{ 
+					display:block; 
+				}
+			}
+			&.choice_checkbox{
+				option[data-type="checkbox"]{ display:block; }
+			}
+			&.choice_radio{
+				option[data-type="radio"]{ display:block; }
+			}
+			&.repeater{
+				option[data-type="text"],
+				option[data-type="textarea"],
+				option[data-type="wysiwyg"]{ 
+					display:none;
+				}
+				option[data-type="repeater"]{ display:block; }
+			}
+		}
+	}
+	
+	.ajax-disabled{
+		opacity:0.75;
+		pointer-events:none;
 	}
 }
 
@@ -148,7 +236,7 @@ ul.gc-radio-desc li, ul.gc-reveal-items-list li {
 
 	.form-table th {
 		font-weight: normal;
-		padding: 20px 10px;
+		padding: 20px 1em;
 	}
 
 	&.gc-sync {
@@ -196,9 +284,12 @@ ul.gc-radio-desc li, ul.gc-reveal-items-list li {
 
 .gc-template-tab {
 	ul.gc-reveal-items-list li {
-		margin-left: 1.5em
+		margin-left: 1.5em;
+		text-transform:capitalize;
 	}
 }
+
+
 
 .gc-loader {
 	margin: 0 auto;

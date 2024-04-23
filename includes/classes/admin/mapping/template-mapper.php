@@ -48,7 +48,6 @@ class Template_Mapper extends Base {
 	 * @return void
 	 */
 	public function ui_page() {
-
 		// Output the markup for the JS to build on.
 		echo '<div id="mapping-tabs"><span class="gc-loader spinner is-active"></span></div>';
 
@@ -238,7 +237,13 @@ class Template_Mapper extends Base {
 			new Field_Types\Taxonomy( $this->post_types() ),
 			new Field_Types\Meta(),
 			new Field_Types\Media(),
+			//new Field_Types\ACF(),
 		);
+
+		$is_acf_installed = class_exists('acf_pro');
+		if ($is_acf_installed) {
+			$core_field_types[] = new Field_Types\ACF();
+		}
 
 		if ( defined( 'WPSEO_VERSION' ) ) {
 			$core_field_types[] = new Field_Types\WPSEO( $this->post_types() );
@@ -316,73 +321,96 @@ class Template_Mapper extends Base {
 	 *
 	 * @return array  Array of tabs.
 	 */
+	
+	 /**
+	 * Retrieves and structures tabs with associated fields or components.
+	 * Handles tab groups, checks for ACF Pro presence, and constructs tab arrays.
+	 * Utilizes switch cases based on ACF Pro installation status.
+	 *
+	 * @return array Tabs with structured fields or components for display.
+	 */
+
 	protected function get_tabs() {
-		$tabs = array();
-
-		$post_type = $this->get_value( 'post_type', 'esc_attr' );
-
-		$tab_groups = $this->template->related->structure->groups ?? array();
-
-		// to handle multiple tabs
-		foreach ( $tab_groups as $tab ) {
-
-			$rows   = array();
-			$fields = $tab->fields ?? array();
-
-			// to handle fields in a tab
-			foreach ( $fields as $field ) {
-
-				// to handle components with multiple fields inside
-				$fields_data    = $field->component->fields ?? array( $field );
-				$component_id   = self::COMPONENT_FIELD === $field->field_type ? $field->uuid : '';
-				$component_name = self::COMPONENT_FIELD === $field->field_type ? $field->label : '';
-				$metadata       = $field->metadata;
-
-				$is_repeatable = ( is_object( $metadata ) && isset( $metadata->repeatable ) ) ? $metadata->repeatable->isRepeatable : false;
-
-				foreach ( $fields_data as $field_data ) {
-
-					$formatted_field = $this->format_fields(
-						$field_data,
-						$post_type,
-						$component_name,
-						$is_repeatable,
-						$component_id
-					);
-
-					if ( $formatted_field ) {
-						$rows[] = $formatted_field;
+		$tabs = [];
+		$post_type = $this->get_value('post_type', 'esc_attr');
+		$tab_groups = $this->template->related->structure->groups ?? [];
+		$is_acf_pro_installed = class_exists('acf_pro');
+	
+		foreach ($tab_groups as $tab) {
+			$rows = [];
+			$fields = $tab->fields ?? [];
+	
+			foreach ($fields as $field) {
+				$metadata = $field->metadata;
+				$is_repeatable = (is_object($metadata) && isset($metadata->repeatable)) ? $metadata->repeatable->isRepeatable : false;
+				
+				//We use components  as rows and fields in the components as subrows if ACF PRo is installed
+				if ($is_acf_pro_installed) {
+					if (self::COMPONENT_FIELD !== $field->field_type) {
+						$this->formatAndAddField($field, $post_type, '', $is_repeatable, $rows);
+					}
+	
+					if (self::COMPONENT_FIELD === $field->field_type) {
+						$component_id = $field->uuid;
+						$component_name = $field->label;
+						$this->formatAndAddField($field, $post_type, $component_name, $is_repeatable, $rows, $component_id);
+					}
+				} else {
+					// When ACF Pro is not installed, use the original logic:
+					// each row is just as it comes in. (each component field is an individual row)
+					$fields_data = ($field->component->fields ?? [$field]);
+					
+					foreach ($fields_data as $field_data) {
+						$formatted_field = $this->format_fields(
+							$field_data,
+							$post_type,
+							$field->label,
+							$is_repeatable,
+							self::COMPONENT_FIELD === $field->field_type ? $field->uuid : ''
+						);
+	
+						if ($formatted_field) {
+							$rows[] = $formatted_field;
+						}
 					}
 				}
 			}
-
-			$tab_array = array(
-				'id'     => $tab->uuid,
-				'label'  => $tab->name,
-				'hidden' => ! empty( $tabs ),
-				'rows'   => $rows,
-			);
-
-			$tabs[] = $tab_array;
+	
+			$tabs[] = [
+				'id' => $tab->uuid,
+				'label' => $tab->name,
+				'hidden' => !empty($tabs),
+				'rows' => $rows,
+			];
 		}
-
-		$default_tab = array(
-			'id'          => 'mapping-defaults',
-			'label'       => __( 'Mapping Defaults', 'gathercontent-import' ),
-			'hidden'      => true,
-			'navClasses'  => 'alignright',
-			'rows'        => $this->post_options(),
-			'post_author' => $this->get_value( 'post_author', 'absint', 1 ),
-			'post_status' => $this->get_value( 'post_status', 'esc_attr', 'draft' ),
-			'post_type'   => $post_type,
-			'gc_status'   => $this->get_gc_statuses(),
-		);
-
-		$default_tab[ 'select2:post_author:' . $default_tab['post_author'] ] = $this->get_default_field_options( 'post_author' );
-
+	
+		$default_tab = [
+			'id' => 'mapping-defaults',
+			'label' => __('Mapping Defaults', 'gathercontent-import'),
+			'hidden' => true,
+			'navClasses' => 'alignright',
+			'rows' => $this->post_options(),
+			'post_author' => $this->get_value('post_author', 'absint', 1),
+			'post_status' => $this->get_value('post_status', 'esc_attr', 'draft'),
+			'post_type' => $post_type,
+			'gc_status' => $this->get_gc_statuses(),
+		];
+	
+		$default_tab['select2:post_author:' . $default_tab['post_author']] = $this->get_default_field_options('post_author');
+	
 		$tabs[] = $default_tab;
-
+	
 		return $tabs;
+	}
+	
+	
+
+	private function formatAndAddField($field, $post_type, $component_name, $is_repeatable, &$rows, $component_id = '') {
+		$formatted_field = $this->format_fields($field, $post_type, $component_name, $is_repeatable, $component_id);
+
+		if ($formatted_field) {
+			$rows[] = $formatted_field;
+		}
 	}
 
 	/**
@@ -426,6 +454,8 @@ class Template_Mapper extends Base {
 		if ( $val = $this->get_value( $field->uuid ) ) {
 			$field->field_type  = isset( $val['type'] ) ? $val['type'] : '';
 			$field->field_value = isset( $val['value'] ) ? $val['value'] : '';
+			$field->field_field = isset( $val['field'] ) ? $val['field'] : '';
+			$field->field_subfields = isset( $val['sub_fields'] ) ? (array)$val['sub_fields'] : '';
 		}
 
 		$field->is_repeatable = $is_repeatable;

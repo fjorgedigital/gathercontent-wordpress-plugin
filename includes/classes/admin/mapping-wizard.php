@@ -520,6 +520,38 @@ class Mapping_Wizard extends Base {
 		$sync_items = $mapping_id && $this->_get_val( 'sync-items' );
 		$notes      = '';
 
+		$is_acf_pro_installed = class_exists('acf_pro');
+		$template_has_repeatable_fields = false;
+		if (isset($template->related->structure->groups)) {
+			foreach ($template->related->structure->groups as $group) {
+				if (isset($group->fields)) {
+					foreach ($group->fields as $field) {
+						if (isset($field->metadata->repeatable) && $field->metadata->repeatable->isRepeatable) {
+							$template_has_repeatable_fields = true;
+							break 2;
+						}
+					}
+				}
+			}
+		}
+
+		if ($template_has_repeatable_fields && !$is_acf_pro_installed ){
+			$notes .= $this->view(
+				'graceful-degradation',
+				array('additionalClass' => 'gc-component-disabled'),
+				false
+			);
+
+			?>
+				<style>
+					.gc-component-disabled {
+						pointer-events: none;
+						opacity: 0.5;
+					}
+				</style>
+			<?php
+		}
+
 		if ( ! $sync_items && $mapping_id ) {
 			$notes .= $this->view(
 				'existing-mapping-notice',
@@ -534,7 +566,7 @@ class Mapping_Wizard extends Base {
 		if ( ! $project_id || ! $template_id ) {
 			$notes = $this->view( 'no-mapping-or-template-available', array(), false ) . $notes;
 		}
-
+		
 		$title = isset( $template->data->name )
 			? $template->data->name
 			: __( 'Unknown Template', 'gathercontent-import' );
