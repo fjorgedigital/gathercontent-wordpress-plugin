@@ -42,27 +42,6 @@ class ACF extends Base implements Type {
         $group_results = $wpdb->get_results($groups_query);
         
         // FIELD GROUPS
-        // if($group_results){
-        //     foreach($group_results as $group) {
-        //         // Set the top level field group array of options
-        //         $options_acf_groups[$group->post_name] = $group->post_title;
-        //         // Create a blank array based on the group id to define the groups fields
-        //         $options_acf_groups_fields[$group->post_name] = array();
-
-        //         // Define fields query
-        //         $fields_query = "SELECT * FROM wp_posts WHERE post_type = 'acf-field' AND post_content LIKE '%repeater%' AND post_parent = '$group->ID'"; // Use to get ONLY repeaters
-        //         // $fields_query = "SELECT * FROM wp_posts WHERE post_type = 'acf-field' AND post_parent = '$group->ID'";
-        //         $fields_results = $wpdb->get_results($fields_query);
-
-        //         // Loop fields within each ACF Field Group
-        //         if($fields_results){
-        //             foreach($fields_results as $field) {
-        //                 // Build array of fields based on parent group
-        //                 $options_acf_groups_fields[$group->post_name][$field->post_name] = $field->post_title;
-        //             }
-        //         }
-        //     }
-        // }
         if($group_results){
             // Extract group IDs
             $groupIds = array_map(function ($group) use ($wpdb) {
